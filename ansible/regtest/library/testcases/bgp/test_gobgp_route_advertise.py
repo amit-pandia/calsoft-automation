@@ -164,6 +164,10 @@ def verify_gobgp_route_advertise(module):
     execute_commands(module, 'service {} restart'.format(package_name))
     execute_commands(module, 'service {} status'.format(package_name))
 
+    # Get gobgp neighbors
+    cmd = 'gobgp nei'
+    execute_commands(module, cmd)
+
     # Advertise routes
     add_route_cmd = 'gobgp global rib -a ipv4 add 192.168.{}.1/32'.format(
         switch_name[-2::])
@@ -212,12 +216,6 @@ def verify_gobgp_route_advertise(module):
 
     # Store the failure summary in hash
     HASH_DICT['result.detail'] = failure_summary
-
-    # Delete advertised routes
-    time.sleep(5)
-    cmd = 'gobgp global rib -a ipv4 del 192.168.{}.1/32'.format(
-        switch_name[-2::])
-    execute_commands(module, cmd)
 
     # Get the GOES status info
     execute_commands(module, 'goes status')

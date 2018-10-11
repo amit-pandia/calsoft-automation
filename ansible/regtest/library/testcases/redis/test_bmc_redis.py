@@ -48,9 +48,9 @@ options:
         - Name of the hash in which to store the result in redis.
       required: False
       type: str
-    log_dir_path:
+    platina_redis_channel:
       description:
-        - Path to log directory where logs will be stored.
+        - Name of the platina redis channel.
       required: False
       type: str
 """
@@ -60,7 +60,7 @@ EXAMPLES = """
   test_bmc_redis:
     switch_name: "{{ inventory_hostname }}"
     bmc_redis_ip: "{{ ansible_ssh_host }}"
-    log_dir_path: "{{ log_dir_path }}"
+    platina_redis_channel: "platina-mk1"
 """
 
 RETURN = """
@@ -80,7 +80,7 @@ def get_cli(module):
     :param module: The Ansible module to fetch input parameters.
     :return: Initial cli string.
     """
-    return 'redis-cli -h {} '.format(module.params['bmc_redis_ip'])
+    return '/home/platina/redis/redis-cli --raw -h {} '.format(module.params['bmc_redis_ip'])
 
 
 def run_cli(module, cli):
@@ -102,30 +102,6 @@ def run_cli(module, cli):
         return None
 
 
-def get_ipv6_address(module):
-    """
-    Method to get ipv6 address from base mac address
-    :param module: The Ansible module to fetch input parameters.
-    :return: IPV6 local address as string
-    """
-    cli = get_cli(module)
-    cli += 'hget platina eeprom.BaseEthernetAddress'
-    mac = run_cli(module, cli)
-
-    parts = mac.split(":")
-    parts.insert(3, "ff")
-    parts.insert(4, "fe")
-    parts[0] = "%x" % (int(parts[0], 16) ^ 2)
-
-    ipv6parts = []
-    for i in range(0, len(parts), 2):
-        ipv6parts.append("".join(parts[i:i + 2]))
-
-    ipv6 = "fe80::%s" % (":".join(ipv6parts))
-
-    return ipv6
-
-
 def execute_and_verify(module, operation, param):
     """
     Execute hget command for the given parameter and verify the same.
@@ -136,8 +112,9 @@ def execute_and_verify(module, operation, param):
     global HASH_DICT, RESULT_STATUS
     failure_summary = ''
     switch_name = module.params['switch_name']
-
-    cmd = '{} platina {} '.format(operation, param)
+    
+    cmd = '{} {} {} '.format(operation, 
+                             module.params['platina_redis_channel'], param)
 
     cli = get_cli(module) + cmd
     out = run_cli(module, cli)
@@ -169,22 +146,19 @@ def test_hget_operations(module):
     global RESULT_STATUS
     failure_summary = ''
 
-    ipv6 = get_ipv6_address(module)
-    ipv6 += '%eth0'
-
-    parameter = 'temp {}'.format(ipv6)
+    parameter = 'temp'
     failure_summary += execute_and_verify(module, 'hget', parameter)
 
-    parameter = 'status {}'.format(ipv6)
+    parameter = 'status'
     failure_summary += execute_and_verify(module, 'hget', parameter)
 
-    parameter = 'fan_tray {}'.format(ipv6)
+    parameter = 'fan_tray'
     failure_summary += execute_and_verify(module, 'hget', parameter)
 
-    parameter = 'psu {}'.format(ipv6)
+    parameter = 'psu'
     failure_summary += execute_and_verify(module, 'hget', parameter)
 
-    parameter = 'vmon {}'.format(ipv6)
+    parameter = 'vmon'
     failure_summary += execute_and_verify(module, 'hget', parameter)
 
     HASH_DICT['result.detail'] = failure_summary
@@ -196,8 +170,8 @@ def main():
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
             bmc_redis_ip=dict(required=False, type='str'),
+            platina_redis_channel=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
-            log_dir_path=dict(required=False, type='str'),
         )
     )
 
@@ -209,24 +183,11 @@ def main():
     # Calculate the entire test result
     HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
-
-    log_file.close()
-
     # Exit the module and return the required JSON.
     module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
+        hash_dict=HASH_DICT
     )
+
 
 if __name__ == '__main__':
     main()

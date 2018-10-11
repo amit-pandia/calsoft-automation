@@ -138,6 +138,46 @@ def execute_commands(module, cmd):
     return out
 
 
+def verify_ping(module):
+    """
+    Method to verify bgp neighbor relationship.
+    :param module: The Ansible module to fetch input parameters.
+    :return: Failure summary if any.
+    """
+    global RESULT_STATUS, HASH_DICT
+    failure_summary = ''
+    switch_name = module.params['switch_name']
+    leaf_list = module.params['leaf_list']
+    config_file = module.params['config_file'].splitlines()
+    self_ip = '192.168.{}.1'.format(switch_name[-2::])
+    neighbor = []
+
+    for line in config_file:
+        line = line.strip()
+        if 'neighbor' in line and 'as' in line:
+            config = line.split()
+            neighbor.append(config[1])
+
+    for leaf in leaf_list:
+        if switch_name not in leaf:
+            ip = '192.168.{}.1'.format(leaf[-2::])
+            neighbor.append(ip)
+
+    for ip in neighbor:
+        packet_count = '3'
+        ping_cmd = 'ping -w 3 -c {} -I {} {}'.format(packet_count,
+                                                     self_ip, ip)
+        ping_out = execute_commands(module, ping_cmd)
+        if '100% packet loss'.format(packet_count) in ping_out:
+            RESULT_STATUS = False
+            failure_summary += 'From switch {} '.format(
+                switch_name)
+            failure_summary += 'neighbor ip {} '.format(ip)
+            failure_summary += 'is not getting pinged\n'
+
+    return failure_summary
+
+
 def check_bgp_neighbors(module, neighbor_ips, neighbor_as):
     """
     Method to verify bgp neighbor relationship.
@@ -152,7 +192,6 @@ def check_bgp_neighbors(module, neighbor_ips, neighbor_as):
     check_ping = module.params['check_ping']
     leaf_list = module.params['leaf_list']
     is_leaf = True if switch_name in leaf_list else False
-    self_ip = '192.168.{}.1'.format(switch_name[-2::])
 
     for ip in neighbor_ips:
         index = neighbor_ips.index(ip)
@@ -176,22 +215,14 @@ def check_bgp_neighbors(module, neighbor_ips, neighbor_as):
                 failure_summary += 'is not Established in the output of '
                 failure_summary += 'command {}\n'.format(cmd)
 
-            if check_ping and is_leaf:
-                packet_count = '3'
-                ping_cmd = 'ping -w 3 -c {} -I {} {}'.format(packet_count,
-                                                             self_ip, ip)
-                ping_out = execute_commands(module, ping_cmd)
-                if '{} received'.format(packet_count) not in ping_out:
-                    RESULT_STATUS = False
-                    failure_summary += 'From switch {} '.format(
-                        switch_name)
-                    failure_summary += 'neighbor ip {} '.format(ip)
-                    failure_summary += 'is not getting pinged\n'
         else:
             RESULT_STATUS = False
             failure_summary += 'On switch {} '.format(switch_name)
             failure_summary += 'result cannot be verified since '
             failure_summary += 'output of command {} is None'.format(cmd)
+
+    if check_ping and is_leaf:
+        failure_summary += verify_ping(module)
 
     return failure_summary
 
@@ -204,12 +235,12 @@ def change_interface_state(module, eth_list, leaf_list, state):
     :param leaf_list: List of leaf switches.
     :param state: State of the interface, either up or down.
     """
-    execute_commands(module, 'ifconfig eth-{}-1 {}'.format(eth_list[1], state))
+    execute_commands(module, 'ifconfig xeth{} {}'.format(eth_list[1], state))
     if leaf_list.index(module.params['switch_name']) == 0:
-        execute_commands(module, 'ifconfig eth-{}-1 {}'.format(
+        execute_commands(module, 'ifconfig xeth{} {}'.format(
             eth_list[0], state))
     else:
-        execute_commands(module, 'ifconfig eth-{}-1 {}'.format(
+        execute_commands(module, 'ifconfig xeth{} {}'.format(
             eth_list[2], state))
 
 
@@ -316,6 +347,6 @@ def main():
         log_file_path=log_file_path
     )
 
+
 if __name__ == '__main__':
     main()
-

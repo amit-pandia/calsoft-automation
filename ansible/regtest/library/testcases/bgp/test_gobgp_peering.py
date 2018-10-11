@@ -249,7 +249,7 @@ def verify_gobgp_peering(module):
         if switch_name in leaf_list:
             # Bring down the interfaces
             for eth in eth_list:
-                down_cmd = 'ifconfig eth-{}-1 down'.format(eth)
+                down_cmd = 'ifconfig xeth{} down'.format(eth)
                 execute_commands(module, down_cmd)
 
         # Wait for 5 secs
@@ -261,7 +261,7 @@ def verify_gobgp_peering(module):
         if switch_name in leaf_list:
             # Bring up the interfaces
             for eth in eth_list:
-                down_cmd = 'ifconfig eth-{}-1 up'.format(eth)
+                down_cmd = 'ifconfig xeth{} up'.format(eth)
                 execute_commands(module, down_cmd)
 
         # Wait for 5 secs
@@ -272,13 +272,6 @@ def verify_gobgp_peering(module):
 
     # Store the failure summary in hash
     HASH_DICT['result.detail'] = failure_summary
-
-    # # Delete advertised routes
-    if check_ping or if_down:
-        time.sleep(7)
-        cmd = 'gobgp global rib -a ipv4 del 192.168.{}.1/32'.format(
-            switch_name[-2::])
-        execute_commands(module, cmd)
 
     # Get the GOES status info
     execute_commands(module, 'goes status')

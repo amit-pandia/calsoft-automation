@@ -112,7 +112,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd or 'dummy' in cmd or 'restart' in cmd:
+    if 'dummy' in cmd or 'restart' in cmd:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -206,7 +206,7 @@ def verify_quagga_bgp_state_propagation(module):
     if switch_name == propagate_switch:
         for eth in eth_list:
             eth = eth.strip()
-            cmd = 'ifconfig eth-{}-1 down'.format(eth)
+            cmd = 'ifconfig xeth{} down'.format(eth)
             execute_commands(module, cmd)
 
     # Wait 200 secs for routes to become unreachable
@@ -220,7 +220,7 @@ def verify_quagga_bgp_state_propagation(module):
     if switch_name == propagate_switch:
         for eth in eth_list:
             eth = eth.strip()
-            cmd = 'ifconfig eth-{}-1 up'.format(eth)
+            cmd = 'ifconfig xeth{} up'.format(eth)
             execute_commands(module, cmd)
 
     # Wait 60 secs for routes to become unreachable

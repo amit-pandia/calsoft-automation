@@ -58,6 +58,11 @@ options:
         - Path to log directory where logs will be stored.
       required: False
       type: str
+    platina_redis_channel:
+      description:
+        - Name of the platina redis channel.
+      required: False
+      type: str
 """
 
 EXAMPLES = """
@@ -65,6 +70,7 @@ EXAMPLES = """
   test_redis_valid:
     switch_name: "{{ inventory_hostname }}"
     switch_ip: "{{ ansible_ssh_host }}"
+    platina_redis_channel: "platina-mk1"
 """
 
 RETURN = """
@@ -123,7 +129,8 @@ def execute_and_verify(module, operation, param, set_value):
     failure_summary = ''
     switch_name = module.params['switch_name']
 
-    cmd = '{} platina {} '.format(operation, param)
+    cmd = '{} {} {} '.format(operation,
+                             module.params['platina_redis_channel'], param)
 
     if operation == 'hset':
         cmd += '{}'.format(set_value)
@@ -134,7 +141,7 @@ def execute_and_verify(module, operation, param, set_value):
     # Store command prefixed with exec time as key and
     # command output as value in the hash dictionary
     exec_time = run_cli(module, 'date +%Y%m%d%T')
-    key = '{0} {1} {2}'.format(switch_name, exec_time, cmd)
+    key = '{0} {1} {2}'.format(switch_name, exec_time, cli)
     HASH_DICT[key] = out
 
     # For errors, update the result status to False
@@ -168,7 +175,7 @@ def test_hget_hset_operations(module):
     failure_summary = ''
 
     # Set vnet.pollInterval value to 2
-    set_value = '2'
+    set_value = '2.000000'
     parameter = 'vnet.pollInterval'
     failure_summary += execute_and_verify(module, 'hset', parameter, set_value)
 
@@ -176,17 +183,12 @@ def test_hget_hset_operations(module):
     failure_summary += execute_and_verify(module, 'hget', parameter, set_value)
 
     # Set vnet.meth-2.speed value to auto
-    set_value = 'auto'
+    set_value = 'autoneg'
     parameter = 'vnet.meth-2.speed'
     failure_summary += execute_and_verify(module, 'hset', parameter, set_value)
 
     # Verify vnet.meth-2.speed value using hget command
     failure_summary += execute_and_verify(module, 'hget', parameter, set_value)
-
-    # Set vnet.fe1-pipe3-loopback.speed value to auto
-    set_value = 'auto'
-    parameter = 'vnet.fe1-pipe3-loopback.speed'
-    failure_summary += execute_and_verify(module, 'hset', parameter, set_value)
 
     # Verify vnet.fe1-pipe3-loopback.speed value using hget command
     failure_summary += execute_and_verify(module, 'hget', parameter, set_value)
@@ -201,6 +203,7 @@ def main():
             switch_name=dict(required=False, type='str'),
             switch_ip=dict(required=False, type='str'),
             remote_access=dict(required=False, type='bool', default=False),
+            platina_redis_channel=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
         )

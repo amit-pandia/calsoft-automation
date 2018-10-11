@@ -1,0 +1,44 @@
+---
+
+- hosts: leaf:spine
+  become: true
+  tasks:
+    - name: Restore backup of /etc/quagga/bgpd.conf
+      copy:
+        src: "{{ quagga_bgp_conf_file_bck }}"
+        dest: "{{ quagga_bgp_conf_file }}"
+        remote_src: true
+
+    - name: Remove backup file
+      file:
+        path: "{{ quagga_bgp_conf_file_bck }}"
+        state: absent
+
+
+- hosts: leaf[0]
+  become: true
+  tasks:
+    - name: Delete dummy interface
+      command: "ip link del dummy0 type dummy"
+
+
+- hosts: leaf:spine
+  become: true
+  tasks:
+    - name: Execute commands
+      command: "{{ item }}"
+      with_items:
+      - 'rmmod platina-mk1'
+      - 'modprobe platina-mk1 provision=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1'
+      - 'ifdown -a --allow vnet'
+      - 'ifup -a --allow vnet'
+      - 'goes restart'
+
+    - name: Wait few seconds for GOES to come up
+      pause:
+        seconds: 10
+
+    - name: Restart quagga
+      service:
+        name: quagga
+        state: restarted

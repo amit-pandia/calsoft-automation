@@ -1,10 +1,10 @@
-server_emulator ansible_ssh_host=172.17.2.28
-packet_generator ansible_ssh_host=172.17.2.46 ansible_become_user=platina ansible_become_pass=regressi0n ansible_become_method=su
+server_emulator ansible_ssh_host=172.17.2.28 testbed_name=testbed2
+packet_generator ansible_ssh_host=172.17.2.10 ansible_become_user=platina ansible_become_pass=regressi0n ansible_become_method=su testbed_name=testbed2
 
-invader42 ansible_ssh_host=172.17.2.42 bmc_redis_ip=172.17.3.42
-invader43 ansible_ssh_host=172.17.2.43 bmc_redis_ip=172.17.3.43
-invader44 ansible_ssh_host=172.17.2.44 bmc_redis_ip=172.17.3.44
-invader45 ansible_ssh_host=172.17.2.45 bmc_redis_ip=172.17.3.45
+invader42 ansible_ssh_host=172.17.2.42 bmc_redis_ip=172.17.3.42 testbed_name=testbed2
+invader43 ansible_ssh_host=172.17.2.43 bmc_redis_ip=172.17.3.43 testbed_name=testbed2
+invader44 ansible_ssh_host=172.17.2.44 bmc_redis_ip=172.17.3.44 testbed_name=testbed2
+invader45 ansible_ssh_host=172.17.2.45 bmc_redis_ip=172.17.3.45 testbed_name=testbed2
 
 [spine]
 invader43

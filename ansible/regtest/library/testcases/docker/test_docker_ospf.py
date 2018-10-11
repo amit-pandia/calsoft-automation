@@ -19,10 +19,12 @@
 #
 
 import shlex
+import time
 
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
+
 
 DOCUMENTATION = """
 ---
@@ -37,6 +39,11 @@ options:
         - Name of the switch on which tests will be performed.
       required: False
       type: str
+    neighbor_invaders:
+      description:
+        - List of the switches on which ping will be tested.
+      type: list
+      default: []
     container:
       description:
         - Name of the container.
@@ -124,7 +131,7 @@ def get_cli(module):
     :param module: The Ansible module to fetch input parameters.
     :return: Initial cli/cmd string.
     """
-    return "docker exec -it {} ".format(module.params['container'])
+    return "docker exec -i {} ".format(module.params['container'])
 
 
 def verify_ospf_neighbors(module):
@@ -135,7 +142,9 @@ def verify_ospf_neighbors(module):
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
     switch_name = module.params['switch_name']
+    neighbor_invaders = module.params['neighbor_invaders']
     config_file = module.params['config_file'].splitlines()
+    ping_ip_list = []
 
     # Get the current/running configurations
     cmd = get_cli(module) + "vtysh -c 'sh running-config'"
@@ -145,25 +154,52 @@ def verify_ospf_neighbors(module):
     cmd = get_cli(module) + "vtysh -c 'show ip route ospf'"
     ospf_routes = execute_commands(module, cmd)
 
-    for line in config_file:
-        line = line.strip()
-        if 'network' in line and 'area' in line:
-            route = line.split()[1]
-            if route not in ospf_routes:
+    if ospf_routes:
+        for line in config_file:
+            line = line.strip()
+            if 'network' in line and 'area' in line:
+                route = line.split()[1]
+                if route not in ospf_routes:
+                    RESULT_STATUS = False
+                    failure_summary += 'On switch {} '.format(switch_name)
+                    failure_summary += 'ospf route {} is not showing up '.format(route)
+                    failure_summary += 'in the output of command {}\n'.format(cmd)
+        if ospf_routes.count('O>*') < 3:
+            RESULT_STATUS = False
+            failure_summary += 'On switch {} '.format(switch_name)
+            failure_summary += 'dummy routes are not showing up '.format(route)
+            failure_summary += 'in the output of command {}\n'.format(cmd)
+        else:
+            ospf_routes = ospf_routes.splitlines()
+            for line in ospf_routes:
+                if 'O>*' in line and '192' in line:
+                    ping_ip_list.append(line.split()[1].split('/')[0])
+
+        for ip in ping_ip_list:
+            cmd = get_cli(module) + 'ping -c 5 {}'.format(ip)
+            ping_out = execute_commands(module, cmd)
+            if '100% packet loss' in ping_out:
                 RESULT_STATUS = False
                 failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += 'ospf route {} is not showing up '.format(route)
-                failure_summary += 'in the output of command {} '.format(cmd)
+                failure_summary += 'pings to dummy route {} are not showing up\n'.format(ip)
+
+    else:
+        RESULT_STATUS = False
+        failure_summary += 'On switch {} '.format(switch_name)
+        failure_summary += 'ospf routes cannot be verified since '
+        failure_summary += 'output of command {} is None\n'.format(cmd)
 
     # Get ospf neighbors relationships
     cmd = get_cli(module) + "vtysh -c 'show ip ospf neighbor'"
     out = execute_commands(module, cmd)
 
     # For errors, update the result status to False
-    if out is None or 'error' in out:
-        RESULT_STATUS = False
-        failure_summary += 'On Switch {} '.format(switch_name)
-        failure_summary += 'output of command {} is None\n'.format(cmd)
+    for neighbor in neighbor_invaders:
+        if '172.17.2.{}'.format(neighbor[-2::]) not in out:
+            RESULT_STATUS = False
+            failure_summary += 'On Switch {} '.format(switch_name)
+            failure_summary += 'ospf neighbor 172.17.2.{} not found in the '.format(neighbor[-2::])
+            failure_summary += 'output of command {}\n'.format(cmd)
 
     HASH_DICT['result.detail'] = failure_summary
 
@@ -176,6 +212,7 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
+            neighbor_invaders=dict(required=False, type='list', default=[]),
             container=dict(required=False, type='str'),
             config_file=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
@@ -185,6 +222,7 @@ def main():
 
     global HASH_DICT, RESULT_STATUS
 
+    time.sleep(60)
     # Verify ospf neighbors
     verify_ospf_neighbors(module)
 
@@ -210,6 +248,6 @@ def main():
         log_file_path=log_file_path
     )
 
+
 if __name__ == '__main__':
     main()
-

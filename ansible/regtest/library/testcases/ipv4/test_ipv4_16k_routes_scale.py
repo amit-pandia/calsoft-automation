@@ -55,6 +55,11 @@ options:
         - Name of the hash in which to store the result in redis.
       required: False
       type: str
+    package_name:
+      description:
+        - Name of the package installed (e.g. quagga/frr/bird).
+      required: False
+      type: str
     log_dir_path:
       description:
         - Path to log directory where logs will be stored.
@@ -66,6 +71,7 @@ EXAMPLES = """
 - name: Verify ipv4 routes scale
   test_ipv4_16k_routes_scale:
     switch_name: "{{ inventory_hostname }}"
+    package_name: 'quagga'
     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
     log_dir_path: "{{ log_dir_path }}"
 """
@@ -129,6 +135,7 @@ def verify_ipv4_routes_scale(module):
     switch_name = module.params['switch_name']
     spine_list = module.params['spine_list']
     leaf_list = module.params['leaf_list']
+    package_name = module.params['package_name']
     failure_summary = ''
     total_routes, routes_count = 0, 0
 
@@ -146,7 +153,7 @@ def verify_ipv4_routes_scale(module):
             octet = 3
 
     linux_routes = open('/var/log/linux_routes.txt')
-    quagga_routes = open('/var/log/quagga_routes.txt')
+    quagga_routes = open('/var/log/{}_routes.txt'.format(package_name))
     lrs = mmap.mmap(linux_routes.fileno(), 0, access=mmap.ACCESS_READ)
     qrs = mmap.mmap(quagga_routes.fileno(), 0, access=mmap.ACCESS_READ)
 
@@ -191,6 +198,7 @@ def main():
             switch_name=dict(required=False, type='str'),
             spine_list=dict(required=False, type='list', default=[]),
             leaf_list=dict(required=False, type='list', default=[]),
+            package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
         )

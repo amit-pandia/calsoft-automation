@@ -159,6 +159,10 @@ def verify_gobgp_local_preference(module):
     execute_commands(module, 'service {} restart'.format(package_name))
     execute_commands(module, 'service {} status'.format(package_name))
 
+    # Get gobgp neighbors
+    cmd = 'gobgp nei'
+    execute_commands(module, cmd)
+
     if switch_name == leaf:
         for line in config_file:
             line = line.strip()

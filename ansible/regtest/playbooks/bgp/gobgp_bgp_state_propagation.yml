@@ -1,5 +1,16 @@
 ---
 
+- hosts: leaf:spine
+  become: true
+  ignore_errors: yes
+  tasks:
+    - shell: dpkg --list | grep kernel
+      register: kernel_version
+
+    - debug:
+        var: kernel_version.stdout_lines
+
+
 - hosts: server_emulator
   become: true
 
@@ -79,11 +90,11 @@
 - hosts: leaf[1]
   become: true
   tasks:
-    - name: Shutdown interface eth-19-1
-      command: "ifconfig eth-19-1 down"
+    - name: Shutdown interface xeth19
+      command: "ifconfig xeth19 down"
 
-    - name: Shutdown interface eth-3-1
-      command: "ifconfig eth-3-1 down"
+    - name: Shutdown interface xeth3
+      command: "ifconfig xeth3 down"
 
     - name: Wait 200 seconds for route to become unreachable
       pause:
@@ -123,11 +134,11 @@
 - hosts: leaf[1]
   become: true
   tasks:
-    - name: Bring up interface eth-19-1
-      command: "ifconfig eth-19-1 up"
+    - name: Bring up interface xeth19
+      command: "ifconfig xeth19 up"
 
-    - name: Bring up interface eth-3-1
-      command: "ifconfig eth-3-1 up"
+    - name: Bring up interface xeth3
+      command: "ifconfig xeth3 up"
 
     - name: Wait 40 seconds for route to become reachable
       pause:
@@ -170,18 +181,9 @@
   tasks:
     - include: ../../playbooks/get_goes_version_and_tags.yml
 
-    - name: Remove config file
-      file:
-        path: "{{ gobgp_bgp_conf_file }}"
-        state: absent
 
-    - name: Remove advertise route
-      add_remove_route:
-        switch_name: "{{ inventory_hostname }}"
-        remove: True
-
-    - name: Delete dummy interface
-      command: "ip link del dummy0 type dummy"
+- include: gobgp_bgp_state_propagation_reset.yml
+  when: reset_config
 
 
 - hosts: server_emulator
@@ -199,6 +201,10 @@
     - name: Print failure summary
       debug:
         msg: "Failure summary: {{ result.result_detail }}"
+
+    - lineinfile:
+        path: "{{ regression_summary_report }}"
+        line: "{{ hash_name }}: {{ result.result_status }}"
 
 
 - hosts: leaf:spine

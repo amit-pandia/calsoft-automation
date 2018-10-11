@@ -161,7 +161,7 @@ def verify_ospf_traffic(module):
             else:
                 octets[3] = switch_id
                 ip = '.'.join(octets)
-                eth = 'eth-{}-1'.format(octets[2])
+                eth = 'xeth{}'.format(octets[2])
                 cmd = 'ifconfig {} {} {}'.format(eth, ip, netmask)
 
             # Run ifconfig command
@@ -169,7 +169,7 @@ def verify_ospf_traffic(module):
 
     # Restart and check package status
     execute_commands(module, 'service {} restart'.format(package_name))
-    time.sleep(35)
+    time.sleep(60)
     execute_commands(module, 'service {} status'.format(package_name))
 
     if switch_name in leaf_list:
@@ -211,9 +211,6 @@ def verify_ospf_traffic(module):
             RESULT_STATUS = False
             failure_summary += 'From switch {}, '.format(switch_name)
             failure_summary += '{} is not getting pinged\n'.format(neighbor_switch)
-
-    # Delete the dummy interface
-    execute_commands(module, 'ip link del dummy0 type dummy')
 
     HASH_DICT['result.detail'] = failure_summary
 
@@ -259,6 +256,7 @@ def main():
         hash_dict=HASH_DICT,
         log_file_path=log_file_path
     )
+
 
 if __name__ == '__main__':
     main()

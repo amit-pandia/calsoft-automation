@@ -148,6 +148,10 @@ def verify_gobgp_convergence(module):
     execute_commands(module, 'service {} restart'.format(package_name))
     execute_commands(module, 'service {} status'.format(package_name))
 
+    # Get gobgp neighbors
+    cmd = 'gobgp nei'
+    execute_commands(module, cmd)
+
     # Get all advertised routes
     cmd = "vtysh -c 'sh ip route'"
     all_routes = execute_commands(module, cmd)
