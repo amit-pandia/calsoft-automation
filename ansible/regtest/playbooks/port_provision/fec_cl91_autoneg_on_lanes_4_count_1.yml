@@ -19,7 +19,7 @@
       register: start_time
 
     - set_fact:
-        hash_name: "port_provision_fec_none_autoneg_off_lanes_4_count_1_{{ start_time.stdout }}"
+        hash_name: "port_provision_fec_cl91_autoneg_on_lanes_4_count_1_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
 
 
