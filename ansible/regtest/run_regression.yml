@@ -34,7 +34,7 @@
 
 
 # Run all dynamic port provision test cases
-- include: port_provision_dynaimic_main.yml
+#- include: port_provision_dynaimic_main.yml
 
 
 # Run all redis test cases
