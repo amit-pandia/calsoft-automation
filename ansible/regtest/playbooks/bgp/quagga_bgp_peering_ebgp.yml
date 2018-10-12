@@ -143,7 +143,7 @@
     config_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/bgp_peering_ebgp.conf') }}"
  
   tasks:
-    - include: ../../playbooks/get_goes_status.yml
+    - include: ../../playbooks/get_goes_status.yml start_time={{ hostvars['server_emulator']['start_time'] }} hash_name={{ hostvars['server_emulator']['hash_name'] }}
       when: not dry_run
     
     - name: Print bgp config
