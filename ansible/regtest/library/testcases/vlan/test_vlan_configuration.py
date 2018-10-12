@@ -248,7 +248,7 @@ def verify_vlan_configurations(module):
             state = 'arp' if arping else 'icmp'
 
             if not multiple_vlan:
-                cmd = 'timeout 20 tcpdump -c 15 -net -i xeth{} {}'.format(eth, state)
+                cmd = 'timeout 30 tcpdump -c 15 -net -i xeth{} {}'.format(eth, state)
                 tcpdump_out = execute_commands(module, cmd)
 
                 if tcpdump_out:
@@ -266,7 +266,7 @@ def verify_vlan_configurations(module):
                 vlan_id = int(eth)
                 for subport in range(1, 5):
                     vlan_id += 1
-                    cmd = 'timeout 20 tcpdump -c 15 -net -i xeth{} {}'.format(eth, state)
+                    cmd = 'timeout 30 tcpdump -c 15 -net -i xeth{} {}'.format(eth, state)
                     tcpdump_out = execute_commands(module, cmd)
 
                     if tcpdump_out:
@@ -284,7 +284,7 @@ def verify_vlan_configurations(module):
                         failure_summary += 'failed to capture tcpdump output\n'
     else:
         for eth in eth_list:
-            cmd = 'timeout 20 tcpdump -c 7 -G 10 -net -i xeth{} not proto ospf and not arp -vvv'.format(eth)
+            cmd = 'timeout 30 tcpdump -c 7 -G 10 -net -i xeth{} not proto ospf and not arp -vvv'.format(eth)
             lldp_out = execute_commands(module, cmd)
 
             if lldp_out:
