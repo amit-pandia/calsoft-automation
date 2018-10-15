@@ -93,10 +93,9 @@
   become: true
   tasks:
     - name: Initiate iperf client and verify traffic
-      verify_iperf_traffic_master:
+      verify_iperf_traffic:
         switch_name: "{{ inventory_hostname }}"
         eth_ips_last_octet: "31,32"
-        eth_list: "1,21"
         is_subports: False
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ port_provision_log_dir }}"
