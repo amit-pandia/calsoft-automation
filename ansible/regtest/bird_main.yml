@@ -43,7 +43,7 @@
 
 - include: playbooks/bgp/bird_bgp_peering_loop_prevention.yml
 
-- include: playbooks/bgp/bird_bgp_peering_state_propagation.yml
+#- include: playbooks/bgp/bird_bgp_peering_state_propagation.yml
 
 - include: playbooks/bgp/bird_bgp_peering_convergence.yml
 
