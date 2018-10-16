@@ -35,7 +35,7 @@
 
 - include: playbooks/bgp/bird_bgp_peering_route_reflector.yml
 
-- include: playbooks/bgp/bird_bgp_peering_redundancy.yml
+#- include: playbooks/bgp/bird_bgp_peering_redundancy.yml
 
 - include: playbooks/bgp/bird_bgp_peering_consistency.yml
 
