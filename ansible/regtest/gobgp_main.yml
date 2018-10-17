@@ -35,7 +35,7 @@
 
 - include: playbooks/bgp/gobgp_bgp_peering_route_reflector.yml
 
-- include: playbooks/bgp/gobgp_bgp_peering_redundancy.yml
+#- include: playbooks/bgp/gobgp_bgp_peering_redundancy.yml
 
 - include: playbooks/bgp/gobgp_bgp_peering_consistency.yml
 
@@ -43,6 +43,6 @@
 
 - include: playbooks/bgp/gobgp_bgp_peering_loop_prevention.yml
 
-- include: playbooks/bgp/gobgp_bgp_state_propagation.yml
+#- include: playbooks/bgp/gobgp_bgp_state_propagation.yml
 
 - include: playbooks/bgp/gobgp_bgp_convergence.yml
