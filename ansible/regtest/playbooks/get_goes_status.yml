@@ -1,13 +1,13 @@
 ---
-- name: Get goes status
-  command: goes status
-  register: goes
-  ignore_errors: yes
+    - name: Get goes status
+      command: goes status
+      register: goes
+      ignore_errors: yes
 
-- name: Print goes status
-  debug:
-    var: goes.stdout
-  ignore_errors: yes
+    - name: Print goes status
+      debug:
+        var: goes.stdout
+      ignore_errors: yes
 
 - name: Check for core dump in syslog
   check_core_dump:
@@ -17,11 +17,11 @@
     error_msg: "panic"
     hash_name: "{{ hash_name }}"
   register: module_out
-  when: goes is failed and start_time is defined and hash_name is defined
+  when: goes.stdout.find('Not OK') != -1 and start_time is defined and hash_name is defined
 
 - name: Store the test result in a hash in redis db on server emulator
   store_coredump_result:
     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
     hash_dict: "{{ module_out.hash_dict }}"
   delegate_to: 127.0.0.1
-  when: goes is failed and module_out.found
+  when: goes.stdout.find('Not OK') != -1 and module_out.found
