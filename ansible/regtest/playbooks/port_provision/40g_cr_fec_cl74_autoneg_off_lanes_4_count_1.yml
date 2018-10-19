@@ -51,7 +51,7 @@
 
     - name: Wait few seconds for GOES to come up
       pause:
-        seconds: 5
+        seconds: 15
 
     - name: Verify media, speed and fec values
       test_port_links:
