@@ -19,7 +19,7 @@
       register: start_time
 
     - set_fact:
-        hash_name: "port_provision_40g_cr_fec_cl91_autoneg_off_lanes_4_count_1_{{ start_time.stdout }}"
+        hash_name: "port_provision_40g_cr_fec_cl74_autoneg_off_lanes_4_count_1_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
 
 
@@ -30,9 +30,9 @@
         path: "{{ port_provision_log_dir }}"
         state: directory
 
-    - name: Copy port provisioned interfaces_40g_cr_fec_cl91_autoneg_off_lanes_4_count_1 file to /etc/network/interfaces
+    - name: Copy port provisioned interfaces_40g_cr_fec_cl74_autoneg_off_lanes_4_count_1 file to /etc/network/interfaces
       template:
-        src: "../../files/{{inventory_hostname}}/interfaces_40g_cr_fec_cl91_autoneg_off_lanes_4_count_1"
+        src: "../../files/{{inventory_hostname}}/interfaces_40g_cr_fec_cl74_autoneg_off_lanes_4_count_1"
         dest: "{{ network_interfaces_file }}"
 
     - name: Copy goesd-platina-mk1-modprobe.conf file
@@ -57,7 +57,7 @@
         switch_name: "{{ inventory_hostname }}"
         speed: "40g"
         media: "copper"
-        fec: "cl91"
+        fec: "cl74"
         autoneg: "off"
         platina_redis_channel: "{{ platina_redis_channel }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
