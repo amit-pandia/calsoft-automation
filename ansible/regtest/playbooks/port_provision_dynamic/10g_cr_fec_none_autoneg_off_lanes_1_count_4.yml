@@ -19,7 +19,7 @@
       register: start_time
 
     - set_fact:
-        hash_name: "port_provision_10g_cr_fec_none_autoneg_off_lanes_1_count_4_{{ start_time.stdout }}"
+        hash_name: "dynamic_port_provision_10g_cr_fec_none_autoneg_off_lanes_1_count_4_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
 
 
@@ -48,11 +48,6 @@
       - 'goes restart'
       - 'ifdown -a --allow vnet'
       - 'ifup -a --allow vnet'
-
-#    - name: Restart networking service
-#      service:
-#        name: networking
-#        state: restarted
 
     - name: Wait few seconds for GOES to come up
       pause:
@@ -88,12 +83,112 @@
         log_content: "{{ logs['content'] | b64decode }}"
       delegate_to: 127.0.0.1
 
+    - name: Set fec to cl74 and verify
+      set_configs_explicitly:
+        switch_name: "{{ inventory_hostname }}"
+        parameter: "fec"
+        value: "cl74"
+        speed: "10g"
+        media: "copper"
+        fec: "cl74"
+        autoneg: "off"
+        is_subports: True
+        platina_redis_channel: "{{ platina_redis_channel }}"
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        log_dir_path: "{{ port_provision_log_dir }}"
+      register: module_out
+
+    - command: "date +%Y%m%d%T"
+      register: end_time
+
+    - name: Fetch the log file
+      slurp:
+        src: "{{ module_out.log_file_path }}"
+      register: logs
+
+    - name: Store the test result in a hash in redis db on server emulator
+      store_result_in_redis:
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        start_time: "{{ hostvars['server_emulator']['start_time'] }}"
+        end_time: "{{ end_time.stdout }}"
+        hash_dict: "{{ module_out.hash_dict }}"
+        log_content: "{{ logs['content'] | b64decode }}"
+      delegate_to: 127.0.0.1
+
 
 - hosts: spine
   become: true
   tasks:
     - name: Initiate iperf servers
       shell: "iperf -s &"
+
+
+- hosts: leaf[0]
+  become: true
+  tasks:
+    - name: Initiate iperf client and verify traffic
+      verify_iperf_traffic:
+        switch_name: "{{ inventory_hostname }}"
+        eth_ips_last_octet: "31,32"
+        is_subports: True
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        log_dir_path: "{{ port_provision_log_dir }}"
+      register: module_out
+
+    - command: "date +%Y%m%d%T"
+      register: end_time
+
+    - name: Fetch the log file
+      slurp:
+        src: "{{ module_out.log_file_path }}"
+      register: logs
+
+    - name: Store the test result in a hash in redis db on server emulator
+      store_result_in_redis:
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        start_time: "{{ hostvars['server_emulator']['start_time'] }}"
+        end_time: "{{ end_time.stdout }}"
+        hash_dict: "{{ module_out.hash_dict }}"
+        log_content: "{{ logs['content'] | b64decode }}"
+      delegate_to: 127.0.0.1
+
+
+
+- hosts: leaf:spine
+  become: true
+  tasks:
+    - name: Set fec to cl74 and verify
+      set_configs_explicitly:
+        switch_name: "{{ inventory_hostname }}"
+        parameter: "autoneg"
+        value: "on"
+        speed: "autoneg"
+        media: "copper"
+        fec: "cl74"
+        autoneg: "on"
+        is_subports: True
+        platina_redis_channel: "{{ platina_redis_channel }}"
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        log_dir_path: "{{ port_provision_log_dir }}"
+      register: module_out
+
+    - command: "date +%Y%m%d%T"
+      register: end_time
+
+    - name: Fetch the log file
+      slurp:
+        src: "{{ module_out.log_file_path }}"
+      register: logs
+
+    - name: Store the test result in a hash in redis db on server emulator
+      store_result_in_redis:
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        start_time: "{{ hostvars['server_emulator']['start_time'] }}"
+        end_time: "{{ end_time.stdout }}"
+        hash_dict: "{{ module_out.hash_dict }}"
+        log_content: "{{ logs['content'] | b64decode }}"
+      delegate_to: 127.0.0.1
+
 
 
 - hosts: leaf[0]
