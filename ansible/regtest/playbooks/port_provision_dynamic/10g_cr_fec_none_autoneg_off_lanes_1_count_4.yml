@@ -153,7 +153,6 @@
       delegate_to: 127.0.0.1
 
 
-
 - hosts: leaf:spine
   become: true
   tasks:
