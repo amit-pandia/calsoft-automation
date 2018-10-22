@@ -190,7 +190,6 @@
       delegate_to: 127.0.0.1
 
 
-
 - hosts: leaf[0]
   become: true
   tasks:
