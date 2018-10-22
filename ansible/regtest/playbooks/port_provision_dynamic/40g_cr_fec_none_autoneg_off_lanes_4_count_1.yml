@@ -30,7 +30,7 @@
         path: "{{ port_provision_log_dir }}"
         state: directory
 
-    - name: Copy port provisioned interfaces_40g_cr_fec_cl74_autoneg_off_lanes_4_count_1 file to /etc/network/interfaces
+    - name: Copy port provisioned interfaces_40g_cr_fec_none_autoneg_off_lanes_4_count_1 file to /etc/network/interfaces
       template:
         src: "../../files/{{inventory_hostname}}/interfaces_40g_cr_fec_none_autoneg_off_lanes_4_count_1"
         dest: "{{ network_interfaces_file }}"
@@ -244,4 +244,5 @@
   become: true
   tasks:
     - include: ../../playbooks/get_goes_status.yml
+
 
