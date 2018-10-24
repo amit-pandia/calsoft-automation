@@ -167,7 +167,7 @@ def verify_traffic(module):
                     failure_summary += 'xeth{}-{} using command {}\n'.format(eth, port, cmd)
         else:
             cmd = 'iperf -c 10.0.{}.{} -t 2 -P 1'.format(eth, last_octet)
-            traffic_out = execute_commands(module, cmd)
+            traffic_out = run_cli(module, cmd)
 
             if ('Transfer' not in traffic_out and 'Bandwidth' not in traffic_out and
                     'Bytes' not in traffic_out and 'bits/sec' not in traffic_out):

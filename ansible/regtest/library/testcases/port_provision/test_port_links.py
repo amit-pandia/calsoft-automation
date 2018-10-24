@@ -211,7 +211,7 @@ def verify_port_links(module):
         for eth in eth_list:
             # Verify interface media is set to correct value
             cmd = 'goes hget {} vnet.xeth{}.media'.format(platina_redis_channel, eth)
-            out = execute_commands(module, cmd)
+            out = run_cli(module, cmd)
             if media not in out:
                 RESULT_STATUS = False
                 failure_summary += 'On switch {} '.format(switch_name)
@@ -220,7 +220,7 @@ def verify_port_links(module):
 
             # Verify speed of interfaces are set to correct value
             cmd = 'goes hget {} vnet.xeth{}.speed'.format(platina_redis_channel, eth)
-            out = execute_commands(module, cmd)
+            out = run_cli(module, cmd)
             if speed not in out:
                 RESULT_STATUS = False
                 failure_summary += 'On switch {} '.format(switch_name)
@@ -230,7 +230,7 @@ def verify_port_links(module):
 
             # Verify fec of interfaces are set to correct value
             cmd = 'goes hget {} vnet.xeth{}.fec'.format(platina_redis_channel, eth)
-            out = execute_commands(module, cmd)
+            out = run_cli(module, cmd)
             if fec not in out:
                 RESULT_STATUS = False
                 failure_summary += 'On switch {} '.format(switch_name)
@@ -239,7 +239,7 @@ def verify_port_links(module):
 
             # Verify if port links are up
             cmd = 'goes hget {} vnet.xeth{}.link'.format(platina_redis_channel, eth)
-            out = execute_commands(module, cmd)
+            out = run_cli(module, cmd)
             if 'true' not in out:
                 RESULT_STATUS = False
                 failure_summary += 'On switch {} '.format(switch_name)
@@ -264,7 +264,7 @@ def verify_port_links(module):
             for port in subports:
                 # Verify interface media is set to correct value
                 cmd = 'goes hget {} vnet.xeth{}-{}.media'.format(platina_redis_channel, eth, port)
-                out = execute_commands(module, cmd)
+                out = run_cli(module, cmd)
                 if media not in out:
                     RESULT_STATUS = False
                     failure_summary += 'On switch {} '.format(switch_name)
@@ -273,7 +273,7 @@ def verify_port_links(module):
 
                 # Verify speed of interfaces are set to correct value
                 cmd = 'goes hget {} vnet.xeth{}-{}.speed'.format(platina_redis_channel, eth, port)
-                out = execute_commands(module, cmd)
+                out = run_cli(module, cmd)
                 if speed not in out:
                     RESULT_STATUS = False
                     failure_summary += 'On switch {} '.format(switch_name)
@@ -283,7 +283,7 @@ def verify_port_links(module):
 
                 # Verify fec of interfaces are set to correct value
                 cmd = 'goes hget {} vnet.xeth{}-{}.fec'.format(platina_redis_channel, eth, port)
-                out = execute_commands(module, cmd)
+                out = run_cli(module, cmd)
                 if fec not in out:
                     RESULT_STATUS = False
                     failure_summary += 'On switch {} '.format(switch_name)
@@ -292,7 +292,7 @@ def verify_port_links(module):
 
                 # Verify if port links are up
                 cmd = 'goes hget {} vnet.xeth{}-{}.link'.format(platina_redis_channel, eth, port)
-                out = execute_commands(module, cmd)
+                out = run_cli(module, cmd)
                 if 'true' not in out:
                     RESULT_STATUS = False
                     failure_summary += 'On switch {} '.format(switch_name)
