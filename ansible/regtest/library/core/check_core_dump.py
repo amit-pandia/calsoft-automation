@@ -146,7 +146,7 @@ def verify_log_dumps(module):
         try:
             with open(file_name, 'r') as f:
                 content = f.read()
-            log_file = content.split('\n\n')
+            log_file = content.split('\n')
 
             core_dump = []
 
