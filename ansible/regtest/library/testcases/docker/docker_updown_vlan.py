@@ -143,14 +143,14 @@ def main():
             run_cli(module, cmd)
 
             cmd = '{} up {} xeth{}.{} {}.{}.{}.{}/24'.format(
-                d_move, container_name, eth_list[i], subport, vlan_id[i], eth_list[i],
+                d_move, container_name, eth_list[i], vlan_id[i], eth_list[i],
                 eth_second_octet[i], eth_third_octet, switch_name[-2::])
             run_cli(module, cmd)
     else:
         # Bring down all interfaces in the docker container
         for i in range(len(eth_list)):
             cmd = '{} down {} xeth{}.{}'.format(
-                d_move, container_name, eth_list[i], subport, vlan_id[i])
+                d_move, container_name, eth_list[i], vlan_id[i])
             run_cli(module, cmd)
 
             cmd = 'ip link set down xeth{}.{}'.format(eth_list[i], vlan_id[i])
