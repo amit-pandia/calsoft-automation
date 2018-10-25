@@ -135,28 +135,28 @@ def main():
 
         # Bring up given interfaces in the docker container
         for i in range(len(eth_list)):
-            cmd = 'ip link add link eth-{}-1 name eth-{}-1.{} type vlan id {}'.format(
+            cmd = 'ip link add link xeth{}-1 name xeth{}-1.{} type vlan id {}'.format(
                 eth_list[i], eth_list[i], vlan_id[i], vlan_id[i])
             run_cli(module, cmd)
 
-            cmd = 'ip link set up eth-{}-1.{}'.format(eth_list[i], vlan_id[i])
+            cmd = 'ip link set up xeth{}-1.{}'.format(eth_list[i], vlan_id[i])
             run_cli(module, cmd)
 
-            cmd = '{} up {} eth-{}-{}.{} {}.{}.{}.{}/24'.format(
+            cmd = '{} up {} xeth{}-{}.{} {}.{}.{}.{}/24'.format(
                 d_move, container_name, eth_list[i], subport, vlan_id[i], eth_list[i],
                 eth_second_octet[i], eth_third_octet, switch_name[-2::])
             run_cli(module, cmd)
     else:
         # Bring down all interfaces in the docker container
         for i in range(len(eth_list)):
-            cmd = '{} down {} eth-{}-{}.{}'.format(
+            cmd = '{} down {} xeth{}-{}.{}'.format(
                 d_move, container_name, eth_list[i], subport, vlan_id[i])
             run_cli(module, cmd)
 
-            cmd = 'ip link set down eth-{}-1.{}'.format(eth_list[i], vlan_id[i])
+            cmd = 'ip link set down xeth{}-1.{}'.format(eth_list[i], vlan_id[i])
             run_cli(module, cmd)
 
-            cmd = 'ip link del eth-{}-1.{}'.format(eth_list[i], vlan_id[i])
+            cmd = 'ip link del xeth{}-1.{}'.format(eth_list[i], vlan_id[i])
             run_cli(module, cmd)
 
         # Bring down dummy interface
