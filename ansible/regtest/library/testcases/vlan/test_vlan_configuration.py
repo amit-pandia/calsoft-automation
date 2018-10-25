@@ -202,20 +202,20 @@ def verify_vlan_configurations(module):
             vlan_id = int(eth)
             for subport in range(1, 5):
                 vlan_id += 1
-                cmd = 'ip link add link xeth{} name xeth{}-{}.{} type vlan id {}'.format(
-                    eth, eth, subport, vlan_id, vlan_id)
+                cmd = 'ip link add link xeth{} name xeth{}.{} type vlan id {}'.format(
+                    eth, eth, vlan_id, vlan_id)
                 execute_commands(module, cmd)
-                execute_commands(module, 'ifconfig xeth{}-{}.{} 192.168.{}.{}/24'.format(
-                    eth, subport, vlan_id, vlan_id, third_octet
+                execute_commands(module, 'ifconfig xeth{}.{} 192.168.{}.{}/24'.format(
+                    eth, vlan_id, vlan_id, third_octet
                 ))
 
         for eth in eth_list:
             vlan_id = int(eth)
             for subport in range(1, 5):
                 vlan_id += 1
-                cmd = 'ifconfig xeth{}-{}.{} down'.format(eth, subport, vlan_id)
+                cmd = 'ifconfig xeth{}.{} down'.format(eth, vlan_id)
                 execute_commands(module, cmd)
-                cmd = 'ifconfig xeth{}-{}.{} up'.format(eth, subport, vlan_id)
+                cmd = 'ifconfig xeth{}.{} up'.format(eth, vlan_id)
                 execute_commands(module, cmd)
 
         # Verify vlan interfaces got created with ip assigned to them
@@ -223,8 +223,8 @@ def verify_vlan_configurations(module):
             vlan_id = int(eth)
             for subport in range(1, 5):
                 vlan_id += 1
-                ip_out = execute_commands(module, 'ifconfig xeth{}-{}.{}'.format(
-                    eth, subport, vlan_id))
+                ip_out = execute_commands(module, 'ifconfig xeth{}.{}'.format(
+                    eth, vlan_id))
                 if ip_out:
                     if '192.168.{}.{}'.format(vlan_id, third_octet) not in ip_out:
                         RESULT_STATUS = False
