@@ -181,11 +181,11 @@ def verify_vlan_configurations(module):
                 eth, eth, third_octet
             ))
 
-        for eth in eth_list:
-            cmd = 'ifconfig xeth{}.1 down'.format(eth)
-            execute_commands(module, cmd)
-            cmd = 'ifconfig xeth{}.1 up'.format(eth)
-            execute_commands(module, cmd)
+        # for eth in eth_list:
+        #     cmd = 'ifconfig xeth{}.1 down'.format(eth)
+        #     execute_commands(module, cmd)
+        #     cmd = 'ifconfig xeth{}.1 up'.format(eth)
+        #     execute_commands(module, cmd)
 
         # Verify vlan interfaces got created with ip assigned to them
         for eth in eth_list:
@@ -209,14 +209,14 @@ def verify_vlan_configurations(module):
                     eth, vlan_id, vlan_id, third_octet
                 ))
 
-        for eth in eth_list:
-            vlan_id = int(eth)
-            for subport in range(1, 5):
-                vlan_id += 1
-                cmd = 'ifconfig xeth{}.{} down'.format(eth, vlan_id)
-                execute_commands(module, cmd)
-                cmd = 'ifconfig xeth{}.{} up'.format(eth, vlan_id)
-                execute_commands(module, cmd)
+        # for eth in eth_list:
+        #     vlan_id = int(eth)
+        #     for subport in range(1, 5):
+        #         vlan_id += 1
+        #         cmd = 'ifconfig xeth{}.{} down'.format(eth, vlan_id)
+        #         execute_commands(module, cmd)
+        #         cmd = 'ifconfig xeth{}.{} up'.format(eth, vlan_id)
+        #         execute_commands(module, cmd)
 
         # Verify vlan interfaces got created with ip assigned to them
         for eth in eth_list:
