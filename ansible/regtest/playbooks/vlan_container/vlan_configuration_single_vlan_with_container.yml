@@ -37,7 +37,7 @@
       blockinfile:
         path: "{{ quagga_ospf_conf_file }}"
         marker: ""
-        block: "{{ lookup('file', '../../../files/{{inventory_hostname}}/ospf_single_vlan.conf') }}"
+        block: "{{ lookup('file', '../../files/{{inventory_hostname}}/ospf_single_vlan.conf') }}"
 
     - name: Take backup of /etc/network/interfaces
       copy:
@@ -47,7 +47,7 @@
 
     - name: Copy ipv4 configuration interfaces network file
       copy:
-        src: "../../../files/{{inventory_hostname}}/vlan_on_transit_interfaces"
+        src: "../../files/{{inventory_hostname}}/vlan_on_transit_interfaces"
         dest: "{{ network_interfaces_file }}"
         owner: root
         group: root
@@ -90,7 +90,7 @@
 
     - name: Add docker_move.sh
       copy:
-        src: ../../../templates/docker_move.sh
+        src: ../../templates/docker_move.sh
         dest: "~/docker_move.sh"
         owner: root
         group: root
@@ -124,7 +124,7 @@
       vlan_updown:
         switch_name: "{{ inventory_hostname }}"
         leaf_list: "{{ groups['leaf'] }}"
-        config_file: "{{ lookup('file', '../../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
+        config_file: "{{ lookup('file', '../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
         state: 'up'
 
 
@@ -155,7 +155,7 @@
       vlan_updown:
         switch_name: "{{ inventory_hostname }}"
         leaf_list: "{{ groups['leaf'] }}"
-        config_file: "{{ lookup('file', '../../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
+        config_file: "{{ lookup('file', '../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
         state: 'up'
 
 
@@ -171,7 +171,7 @@
         state: directory
 
     - include_vars:
-        file: ../../../group_vars/{{ inventory_hostname }}/{{ containers }}
+        file: ../../group_vars/{{ inventory_hostname }}/{{ containers }}
 
     - name: Copy ospfd.conf and zebra.conf in respective containers
       include: copy_config_files.yml container={{ containers }} ospfd_conf_file='single_vlan_ospfd.conf.j2' zebra_conf_file='single_vlan_zebra.conf.j2' first_octet1='12' first_octet2='11' first_octet3='15'
@@ -189,7 +189,7 @@
       vlan_updown:
         switch_name: "{{ inventory_hostname }}"
         leaf_list: "{{ groups['leaf'] }}"
-        config_file: "{{ lookup('file', '../../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
+        config_file: "{{ lookup('file', '../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
         state: 'up'
 
 
@@ -205,7 +205,7 @@
         state: directory
 
     - include_vars:
-        file: ../../../group_vars/{{ inventory_hostname }}/{{ containers }}
+        file: ../../group_vars/{{ inventory_hostname }}/{{ containers }}
 
     - name: Copy ospfd.conf and zebra.conf in respective containers
       include: copy_config_files.yml container={{ containers }} ospfd_conf_file='single_vlan_ospfd.conf.j2' zebra_conf_file='single_vlan_zebra.conf.j2' first_octet1='10' first_octet2='13' first_octet3='15'
@@ -222,7 +222,7 @@
       vlan_updown:
         switch_name: "{{ inventory_hostname }}"
         leaf_list: "{{ groups['leaf'] }}"
-        config_file: "{{ lookup('file', '../../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
+        config_file: "{{ lookup('file', '../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
         state: 'up'
 
 
@@ -260,7 +260,7 @@
         switch_list: "{{ groups['leaf'] }}"
         eth_list: "19,3"
         tagged: True
-        config_file: "{{ lookup('file', '../../../group_vars/{{ invader }}/{{ containers }}') }}"
+        config_file: "{{ lookup('file', '../../group_vars/{{ invader }}/{{ containers }}') }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ vlan_log_dir }}"
       register: module_out
@@ -290,7 +290,7 @@
         switch_list: "{{ groups['leaf'] }}"
         eth_list: "3,19"
         tagged: False
-        config_file: "{{ lookup('file', '../../../group_vars/{{ invader }}/{{ containers }}') }}"
+        config_file: "{{ lookup('file', '../../group_vars/{{ invader }}/{{ containers }}') }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ vlan_log_dir }}"
       register: module_out
@@ -333,7 +333,7 @@
 #        switch_list: "{{ groups['spine'] }}"
 #        eth_list: "21,3"
 #        tagged: True
-#        config_file: "{{ lookup('file', '../../../group_vars/{{ invader }}/{{ containers }}') }}"
+#        config_file: "{{ lookup('file', '../../group_vars/{{ invader }}/{{ containers }}') }}"
 #        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
 #        log_dir_path: "{{ vlan_log_dir }}"
 #      register: module_out
@@ -363,7 +363,7 @@
 #        switch_list: "{{ groups['spine'] }}"
 #        eth_list: "3,21"
 #        tagged: False
-#        config_file: "{{ lookup('file', '../../../group_vars/{{ invader }}/{{ containers }}') }}"
+#        config_file: "{{ lookup('file', '../../group_vars/{{ invader }}/{{ containers }}') }}"
 #        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
 #        log_dir_path: "{{ vlan_log_dir }}"
 #      register: module_out
@@ -389,7 +389,7 @@
 - hosts: leaf:spine
   become: yes
   tasks:
-    - include: ../../../playbooks/get_goes_version_and_tags.yml
+    - include: ../../playbooks/get_goes_version_and_tags.yml
 
 
 - include: vlan_configuration_single_vlan_with_container_reset.yml
@@ -418,5 +418,5 @@
 - hosts: leaf:spine
   become: true
   tasks:
-    - include: ../../../playbooks/get_goes_status.yml
+    - include: ../../playbooks/get_goes_status.yml
 

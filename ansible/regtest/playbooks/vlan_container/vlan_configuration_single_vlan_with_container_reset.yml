@@ -9,7 +9,7 @@
   tasks:
     - name: Bring down all containers
       vlan_updown:
-        config_file: "{{ lookup('file', '../../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
+        config_file: "{{ lookup('file', '../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
         state: 'down'
 
     - name: Run docker-compose down
@@ -26,7 +26,7 @@
   tasks:
     - name: Bring down all containers
       vlan_updown:
-        config_file: "{{ lookup('file', '../../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
+        config_file: "{{ lookup('file', '../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
         state: 'down'
 
     - name: Run docker-compose down
@@ -43,7 +43,7 @@
   tasks:
     - name: Bring down all containers
       vlan_updown:
-        config_file: "{{ lookup('file', '../../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
+        config_file: "{{ lookup('file', '../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
         state: 'down'
 
     - name: Run docker-compose down
@@ -60,7 +60,7 @@
   tasks:
     - name: Bring down all containers
       vlan_updown:
-        config_file: "{{ lookup('file', '../../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
+        config_file: "{{ lookup('file', '../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
         state: 'down'
 
     - name: Run docker-compose down
