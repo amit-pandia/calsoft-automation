@@ -1,0 +1,23 @@
+!
+!
+!
+!
+hostname ospfd
+password zebra
+log stdout
+!
+!
+!
+interface eth-{{ interface1 }}-1.{{ interface1 }}
+!
+interface eth-{{ interface2 }}-1.{{ interface2 }}
+!
+router ospf
+ospf router-id {{ ansible_ssh_host }}
+network 192.168.{{ interface1 }}.0/24 area 0.0.0.0
+network 192.168.{{ interface2 }}.0/24 area 0.0.0.0
+!
+interface vnet
+!
+line vty
+!
