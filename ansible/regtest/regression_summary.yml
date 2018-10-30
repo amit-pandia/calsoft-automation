@@ -6,7 +6,7 @@
   gather_facts: no
   tasks:
     - name: Get GoES version details
-      shell: "goes hget {{ platina_redis_channel }} package | grep version:"
+      shell: "goes version"
       register: goes_version
 
     - name: Print GoES version details
@@ -14,7 +14,7 @@
         var: goes_version.stdout_lines
 
     - name: Get GoES tag details
-      shell: "goes hget {{ platina_redis_channel }} package | grep tag:"
+      shell: "goes version"
       register: goes_tags
 
     - name: Print GoES tag details
