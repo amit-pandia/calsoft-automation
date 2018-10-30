@@ -107,13 +107,6 @@ def main():
     vlan_id = []
     config_file = module.params['config_file'].splitlines()
 
-    is_leaf = True if switch_name in leaf_list else False
-
-    # Bring down interfaces that are connected to packet generator
-    if is_leaf:
-        for eth in [x for x in range(1, 33) if x % 2 == 0]:
-            run_cli(module, 'ifconfig xeth{} down'.format(eth))
-
     for line in config_file:
         if 'container_name' in line:
             container_name = line.split()[1]
@@ -125,6 +118,13 @@ def main():
             vlan_id.append(vlan)
 
     if module.params['state'] == 'up':
+        is_leaf = True if switch_name in leaf_list else False
+
+        # Bring down interfaces that are connected to packet generator
+        if is_leaf:
+            for eth in [x for x in range(1, 33) if x % 2 == 0]:
+                run_cli(module, 'ifconfig xeth{} down'.format(eth))
+
         # Bring up given interfaces in the docker container
         for i in range(len(eth_list)):
             cmd = 'ip link add link xeth{} name xeth{}.{} type vlan id {}'.format(eth_list[i], eth_list[i],
