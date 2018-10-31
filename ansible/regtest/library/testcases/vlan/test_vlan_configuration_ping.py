@@ -19,6 +19,7 @@
 #
 
 import shlex
+import time
 
 from collections import OrderedDict
 
@@ -205,6 +206,7 @@ def verify_vlan_configurations(module):
 
     if tagged:
         if is_ping_switch:
+            time.sleep(5)
             if not arping:
                 # Initiate ping for tagged packets
                 for switch in switch_list:
