@@ -8,9 +8,9 @@ log stdout
 !
 !
 !
-interface eth-{{ interface1 }}-1.{{ interface1 }}
+interface xeth{{ interface1 }}.{{ interface1 }}
 !
-interface eth-{{ interface2 }}-1.{{ interface2 }}
+interface xeth{{ interface2 }}.{{ interface2 }}
 !
 router ospf
 ospf router-id {{ ansible_ssh_host }}

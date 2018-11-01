@@ -5,10 +5,10 @@
 hostname {{ container_name }}
 password zebra
 !
-interface eth-{{ interface1 }}-1.{{ interface1 }}
+interface xeth{{ interface1 }}.{{ interface1 }}
  ipv6 nd suppress-ra
 !
-interface eth-{{ interface2 }}-1.{{ interface2 }}
+interface xeth{{ interface2 }}.{{ interface2 }}
  ipv6 nd suppress-ra
 !
 interface eth0
