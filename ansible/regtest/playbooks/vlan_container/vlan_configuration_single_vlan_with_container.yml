@@ -140,7 +140,7 @@
         state: directory
 
     - name: Copy ospfd.conf and zebra.conf in respective containers
-      include: copy_config_files.yml container={{ containers }} ospfd_conf_file='single_vlan_ospfd.conf.j2' zebra_conf_file='single_vlan_zebra.conf.j2' first_octet1='10' first_octet2='11' first_octet3='15'
+      include: copy_config_files.yml container={{ containers }} ospfd_conf_file='single_vlan_ospfd.conf.j2' zebra_conf_file='single_vlan_zebra.conf.j2'
 
     - name: Add container info in docker-compose file
       include: update_docker_compose.yml container={{ containers }}
@@ -174,7 +174,7 @@
         file: ../../group_vars/{{ inventory_hostname }}/{{ containers }}
 
     - name: Copy ospfd.conf and zebra.conf in respective containers
-      include: copy_config_files.yml container={{ containers }} ospfd_conf_file='single_vlan_ospfd.conf.j2' zebra_conf_file='single_vlan_zebra.conf.j2' first_octet1='12' first_octet2='11' first_octet3='15'
+      include: copy_config_files.yml container={{ containers }} ospfd_conf_file='single_vlan_ospfd.conf.j2' zebra_conf_file='single_vlan_zebra.conf.j2'
 
     - name: Add container info in docker-compose file
       include: update_docker_compose.yml container={{ containers }}
@@ -208,7 +208,7 @@
         file: ../../group_vars/{{ inventory_hostname }}/{{ containers }}
 
     - name: Copy ospfd.conf and zebra.conf in respective containers
-      include: copy_config_files.yml container={{ containers }} ospfd_conf_file='single_vlan_ospfd.conf.j2' zebra_conf_file='single_vlan_zebra.conf.j2' first_octet1='10' first_octet2='13' first_octet3='15'
+      include: copy_config_files.yml container={{ containers }} ospfd_conf_file='single_vlan_ospfd.conf.j2' zebra_conf_file='single_vlan_zebra.conf.j2'
 
     - name: Add container info in docker-compose file
       include: update_docker_compose.yml container={{ containers }}
