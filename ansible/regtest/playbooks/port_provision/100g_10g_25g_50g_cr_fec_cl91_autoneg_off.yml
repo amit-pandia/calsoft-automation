@@ -61,7 +61,7 @@
     - name: Verify media, speed and fec values
       test_multi_port_links:
         switch_name: "{{ inventory_hostname }}"
-        speed: "100g,10g,25g,50g"
+        speed: "100g,10g,20g,25g,50g,1g"
         media: "fiber"
         fec: "cl91"
         platina_redis_channel: "{{ platina_redis_channel }}"

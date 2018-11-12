@@ -153,14 +153,28 @@ def verify_port_links(module):
             eth_list = ['1']
         elif speed == '10g':
             is_subports = True
-            eth_list = ['3']
+            eth_list = ['3', '11']
+            subports = ['1', '3']
+            fec = 'cl74'
+        elif speed == '20g':
+            is_subports = True
+            eth_list = ['3', '11']
+            subports = ['2', '4']
+            fec = 'cl74'
         elif speed == '25g':
             is_subports = True
-            eth_list = ['5']
+            eth_list = ['5', '13']
+            subports = ['1', '2', '3', '4']
+            fec = 'cl74'
         elif speed == '50g':
             is_subports = True
             is_lane2_count2 = True
-            eth_list = ['7']
+            eth_list = ['7', '15']
+            fec = 'cl74'
+        elif speed == '1g':
+            is_subports = True
+            eth_list = ['9']
+            fec = 'none'
 
         if not is_subports:
             for eth in eth_list:
@@ -201,9 +215,7 @@ def verify_port_links(module):
                     failure_summary += 'port link is not up '
                     failure_summary += 'for the interface xeth{}\n'.format(eth)
         else:
-            if not is_lane2_count2:
-                subports = ['1', '2', '3', '4']
-            else:
+            if is_lane2_count2:
                 subports = ['1', '2']
 
             for eth in eth_list:
