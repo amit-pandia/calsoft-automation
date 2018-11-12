@@ -79,9 +79,16 @@
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ bgp_log_dir }}"
         dry_run_mode: "{{ dry_run }}"
-      register: module_out
+      register: dry_run_out
       delegate_to: 127.0.0.1
       when: dry_run
+
+    - debug: 
+        var: module_out
+
+    - set_fact:
+        dry_run_cmds: "{{ dry_run_out.cmds }}"
+      when: dry_run        
 
     - command: "date +%Y%m%d%T"
       register: end_time
@@ -154,6 +161,6 @@
 
     - name: Print dry run output
       debug:
-        var: module_out.cmds
+        var: dry_run_cmds
       when: dry_run
       delegate_to: 127.0.0.1
