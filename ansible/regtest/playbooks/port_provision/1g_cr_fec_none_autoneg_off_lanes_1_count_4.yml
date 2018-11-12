@@ -61,7 +61,7 @@
     - name: Verify media, speed and fec values
       test_port_links:
         switch_name: "{{ inventory_hostname }}"
-        speed: "1g"
+        speed: "1000m"
         media: "copper"
         fec: "none"
         autoneg: "off"
