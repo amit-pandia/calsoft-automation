@@ -231,8 +231,8 @@ def verify_vlan_configurations(module):
                     tcpdump_out = execute_commands(module, cmd)
 
                     if tcpdump_out:
-                        if ('802.1Q (0x8100)' not in tcpdump_out or 'echo request' not in tcpdump_out or
-                                'echo reply' not in tcpdump_out or 'vlan {}'.format(eth) not in tcpdump_out):
+                        if ('802.1Q (0x8100)' not in tcpdump_out or
+                                'vlan {}'.format(eth) not in tcpdump_out):
                             RESULT_STATUS = False
                             failure_summary += 'On switch {} '.format(switch_name)
                             failure_summary += 'there are no vlan tagged packets '
@@ -247,8 +247,8 @@ def verify_vlan_configurations(module):
                 tcpdump_out = execute_commands(module, cmd)
 
                 if tcpdump_out:
-                    if ('802.1Q (0x8100)' not in tcpdump_out or 'Request' not in tcpdump_out or
-                            'Reply' not in tcpdump_out or 'vlan {}'.format(eth_list[switch_list.index(switch_name)])
+                    if ('802.1Q (0x8100)' not in tcpdump_out or
+                            'vlan {}'.format(eth_list[switch_list.index(switch_name)])
                             not in tcpdump_out):
                         RESULT_STATUS = False
                         failure_summary += 'On switch {} '.format(switch_name)
