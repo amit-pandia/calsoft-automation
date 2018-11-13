@@ -29,7 +29,7 @@
 
 - include: playbooks/port_provision/50g_cr_fec_none_autoneg_off_lanes_2_count_2.yml
 
-#- include: playbooks/port_provision/100g_10g_25g_50g_cr_fec_cl91_autoneg_off.yml
+- include: playbooks/port_provision/100g_10g_25g_50g_cr_fec_cl91_autoneg_off.yml
 
 - include: playbooks/port_provision/fec_cl91_autoneg_on_lanes_4_count_1.yml
 

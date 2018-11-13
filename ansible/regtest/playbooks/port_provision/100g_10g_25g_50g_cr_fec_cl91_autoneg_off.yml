@@ -50,19 +50,19 @@
       with_items:
       - 'goes stop'
       - 'rmmod platina-mk1'
-      - 'modprobe platina-mk1 provision=1,1,4,1,4,1,2,1,4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1'
+      - 'modprobe platina-mk1 provision=1,1,4,1,4,1,2,1,4,1,4,1,4,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1'
       - 'service networking restart'
       - 'goes start'
 
     - name: Wait few seconds for GOES to come up
       pause:
-        seconds: 5
+        seconds: 30
 
     - name: Verify media, speed and fec values
       test_multi_port_links:
         switch_name: "{{ inventory_hostname }}"
         speed: "100g,10g,20g,25g,50g,1g"
-        media: "fiber"
+        media: "copper"
         fec: "cl91"
         platina_redis_channel: "{{ platina_redis_channel }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"

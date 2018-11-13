@@ -175,6 +175,7 @@ def verify_port_links(module):
             is_subports = True
             eth_list = ['9']
             fec = 'none'
+            speed = '1000m'
 
         if not is_subports:
             for eth in eth_list:
