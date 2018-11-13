@@ -47,7 +47,7 @@
 
 - include: playbooks/bgp/frr_bgp_peering_loop_prevention.yml
 
-#- include: playbooks/bgp/frr_bgp_state_propagation.yml
+- include: playbooks/bgp/frr_bgp_state_propagation.yml
 
 - include: playbooks/bgp/frr_bgp_convergence.yml
 

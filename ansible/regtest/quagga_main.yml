@@ -13,7 +13,7 @@
 
 
 # Run all quagga bgp test cases
-#- include: playbooks/bgp/quagga_bgp_peering_ebgp.yml
+- include: playbooks/bgp/quagga_bgp_peering_ebgp.yml
 
 - include: playbooks/bgp/quagga_bgp_peering_ebgp_loopback.yml
 
