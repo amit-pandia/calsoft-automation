@@ -47,6 +47,18 @@
 
 - include: playbooks/bgp/quagga_bgp_peering_loop_prevention.yml
 
+# Uninstall packages stack
+- include: playbooks/installation/uninstall_packages.yml
+
+
+# Reset the setup
+- include: playbooks/master_reset_invaders.yml
+
+
+# Install quagga
+- include: playbooks/installation/quagga_install.yml
+
+
 - include: playbooks/bgp/quagga_bgp_state_propagation.yml
 
 - include: playbooks/bgp/quagga_bgp_ecmp_loadbalancing_paths.yml

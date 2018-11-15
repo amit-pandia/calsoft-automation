@@ -10,3 +10,11 @@
 - include: playbooks/docker/quagga_ospf_traffic_vlan.yml
 
 - include: playbooks/docker/quagga_ospf_traffic_subports.yml
+
+# Uninstall packages stack
+- include: playbooks/installation/uninstall_packages.yml
+
+
+# Reset the setup
+- include: playbooks/master_reset_invaders.yml
+
