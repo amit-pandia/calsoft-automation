@@ -47,7 +47,7 @@
 
     - name: Copy ipv4 configuration interfaces network file
       copy:
-        src: "../../files/{{inventory_hostname}}/interfaces_vlan_transit"
+        src: "../../files/{{inventory_hostname}}/vlan_on_transit_interfaces"
         dest: "{{ network_interfaces_file }}"
         owner: root
         group: root
@@ -188,7 +188,6 @@
       vlan_updown:
         switch_name: "{{ inventory_hostname }}"
         leaf_list: "{{ groups['leaf'] }}"
-        leaf_switch: "{{ groups['leaf'][1] }}"
         config_file: "{{ lookup('file', '../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
         state: 'up'
 
@@ -222,7 +221,6 @@
       vlan_updown:
         switch_name: "{{ inventory_hostname }}"
         leaf_list: "{{ groups['leaf'] }}"
-        leaf_switch: "{{ groups['leaf'][0] }}"
         config_file: "{{ lookup('file', '../../group_vars/{{ inventory_hostname }}/{{ containers }}') }}"
         state: 'up'
 
@@ -407,7 +405,7 @@
     - include: ../../playbooks/get_goes_version_and_tags.yml
 
 
-- include: vlan_configuration_multpile_vlan_with_container_reset.yml
+- include: vlan_configuration_multiple_vlan_with_container_reset.yml
   when: reset_config
 
 
