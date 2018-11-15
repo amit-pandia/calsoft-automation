@@ -223,8 +223,8 @@ def verify_quagga_bgp_state_propagation(module):
             cmd = 'ifconfig xeth{} up'.format(eth)
             execute_commands(module, cmd)
 
-    # Wait 60 secs for routes to become unreachable
-    time.sleep(60)
+    # Wait 100 secs for routes to become unreachable
+    time.sleep(100)
 
     # Verify bgp routes
     if switch_name != propagate_switch:
