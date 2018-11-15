@@ -39,9 +39,27 @@
 
 - include: playbooks/bgp/frr_bgp_peering_route_reflector.yml
 
+# Uninstall packages stack
+- include: playbooks/installation/uninstall_packages.yml
+
+# Reset the setup
+- include: playbooks/master_reset_invaders.yml
+
+# Install frr
+- include: playbooks/installation/frr_install.yml
+
 - include: playbooks/bgp/frr_bgp_peering_redundancy.yml
 
 - include: playbooks/bgp/frr_bgp_peering_consistency.yml
+
+# Uninstall packages stack
+- include: playbooks/installation/uninstall_packages.yml
+
+# Reset the setup
+- include: playbooks/master_reset_invaders.yml
+
+# Install frr
+- include: playbooks/installation/frr_install.yml
 
 - include: playbooks/bgp/frr_bgp_peering_if_down.yml
 
