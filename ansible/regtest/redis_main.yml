@@ -9,7 +9,7 @@
 
 
 # Run all redis test cases
-#- include: playbooks/redis/regression_01.yml
+- include: playbooks/redis/regression_01.yml
 
 - include: playbooks/redis/regression_02.yml
 
