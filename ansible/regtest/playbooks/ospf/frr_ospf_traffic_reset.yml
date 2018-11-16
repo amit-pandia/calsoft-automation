@@ -32,8 +32,6 @@
     - name: Execute commands
       command: "{{ item }}"
       with_items:
-      - 'rmmod platina-mk1'
-      - 'modprobe platina-mk1 provision=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1'
       - 'ifdown -a --allow vnet'
       - 'ifup -a --allow vnet'
       - 'goes restart'
