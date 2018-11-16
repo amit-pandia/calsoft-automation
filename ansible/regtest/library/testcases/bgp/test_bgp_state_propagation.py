@@ -223,12 +223,12 @@ def verify_quagga_bgp_state_propagation(module):
             cmd = 'ifconfig xeth{} up'.format(eth)
             execute_commands(module, cmd)
 
-    retries = 0
+    retries = 1
     found = False
 
     # Verify bgp routes
     if switch_name != propagate_switch:
-        while retries != 10 or not found:
+        while retries != 11 and not found:
             # Wait 100 secs(max) for routes to become reachable
             time.sleep(10)
             summary = verify_bgp_routes(module, True)
