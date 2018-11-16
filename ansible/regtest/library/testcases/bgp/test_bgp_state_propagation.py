@@ -148,19 +148,16 @@ def verify_bgp_routes(module, route_present):
 
         if route_present:
             if route not in out:
-                RESULT_STATUS = False
                 failure_summary += 'On Switch {} bgp route '.format(switch_name)
                 failure_summary += '{} is not present '.format(route)
                 failure_summary += 'in the output of command {}\n'.format(cmd)
         else:
             if route in out:
-                RESULT_STATUS = False
                 failure_summary += 'On Switch {} bgp route '.format(switch_name)
                 failure_summary += '{} is present '.format(route)
                 failure_summary += 'in the output of command {} '.format(cmd)
                 failure_summary += 'even after shutting down this route\n'
     else:
-        RESULT_STATUS = False
         failure_summary += 'On switch {} '.format(switch_name)
         failure_summary += 'bgp routes cannot be verified '
         failure_summary += 'because output of command {} '.format(cmd)
@@ -200,7 +197,10 @@ def verify_quagga_bgp_state_propagation(module):
 
     # Verify bgp routes
     if switch_name != propagate_switch:
-        failure_summary += verify_bgp_routes(module, True)
+        summary = verify_bgp_routes(module, True)
+        if summary:
+            RESULT_STATUS = False
+            failure_summary += summary
 
     # Bring down few interfaces on propagate switch
     if switch_name == propagate_switch:
@@ -214,7 +214,10 @@ def verify_quagga_bgp_state_propagation(module):
 
     # Verify bgp routes
     if switch_name != propagate_switch:
-        failure_summary += verify_bgp_routes(module, False)
+        summary = verify_bgp_routes(module, False)
+        if summary:
+            RESULT_STATUS = False
+            failure_summary += summary
 
     # Bring up interfaces on propagate switch
     if switch_name == propagate_switch:
@@ -238,6 +241,7 @@ def verify_quagga_bgp_state_propagation(module):
             else:
                 retries += 1
         if not found:
+            RESULT_STATUS = False
             failure_summary += summary
         else:
             HASH_DICT['retries'] = 'No. of retries {} approx {} sec'.format(retries, retries*10)
