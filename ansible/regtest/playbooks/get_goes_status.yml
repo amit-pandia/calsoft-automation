@@ -24,4 +24,4 @@
     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
     hash_dict: "{{ module_out.hash_dict }}"
   delegate_to: 127.0.0.1
-  when: goes.stdout.find('Not OK') != -1 and module_out.found
+  when: goes.stdout.find('Not OK') != -1
