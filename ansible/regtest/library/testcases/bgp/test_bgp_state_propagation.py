@@ -195,29 +195,62 @@ def verify_quagga_bgp_state_propagation(module):
     execute_commands(module, 'service {} restart'.format(package_name))
     execute_commands(module, 'service {} status'.format(package_name))
 
+    retries = 1
+    found = False
+    retries_summary = ''
+
     # Verify bgp routes
     if switch_name != propagate_switch:
-        summary = verify_bgp_routes(module, True)
-        if summary:
+        while retries != 11 and not found:
+            # Wait 100 secs(max) for routes to become reachable
+            time.sleep(10)
+            summary = verify_bgp_routes(module, True)
+            if not summary:
+                found = True
+                summary = 'No. of retries {}'.format(retries)
+            else:
+                retries += 1
+        if not found:
             RESULT_STATUS = False
             failure_summary += summary
+            retries_summary += 'No. of retries {} approx {} sec(initial verification)\n'.format(retries, retries*10)
+        else:
+            retries_summary += 'No. of retries {} approx {} sec(initial verification)\n'.format(retries, retries*10)
 
     # Bring down few interfaces on propagate switch
     if switch_name == propagate_switch:
+        time.sleep(50)
         for eth in eth_list:
             eth = eth.strip()
             cmd = 'ifconfig xeth{} down'.format(eth)
             execute_commands(module, cmd)
 
-    # Wait 200 secs for routes to become unreachable
-    time.sleep(200)
+    retries = 1
+    found = False
 
     # Verify bgp routes
     if switch_name != propagate_switch:
-        summary = verify_bgp_routes(module, False)
-        if summary:
+        while retries != 21 and not found:
+            # Wait 200 secs(max) for routes to become unreachable
+            time.sleep(10)
+            summary = verify_bgp_routes(module, False)
+            if not summary:
+                found = True
+                summary = 'No. of retries {}'.format(retries)
+            else:
+                retries += 1
+        if not found:
             RESULT_STATUS = False
             failure_summary += summary
+            retries_summary += 'No. of retries {} approx {} sec(after bringing down interface)\n'.format(retries, retries*10)
+        else:
+            retries_summary += 'No. of retries {} approx {} sec(after bringing down interface)\n'.format(retries, retries*10)
+
+    # Sync the invaders
+    if switch_name == propagate_switch:
+        time.sleep(200)
+    else:
+        time.sleep(200-(retries*10))
 
     # Bring up interfaces on propagate switch
     if switch_name == propagate_switch:
@@ -243,9 +276,11 @@ def verify_quagga_bgp_state_propagation(module):
         if not found:
             RESULT_STATUS = False
             failure_summary += summary
+            retries_summary += 'No. of retries {} approx {} sec(after bringing up interface again)\n'.format(retries, retries*10)
         else:
-            HASH_DICT['retries'] = 'No. of retries {} approx {} sec'.format(retries, retries*10)
+            retries_summary += 'No. of retries {} approx {} sec(after bringing up interface again)\n'.format(retries, retries*10)
 
+    HASH_DICT['retries'] = retries_summary
     HASH_DICT['result.detail'] = failure_summary
 
     # Get the GOES status info
@@ -293,4 +328,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
