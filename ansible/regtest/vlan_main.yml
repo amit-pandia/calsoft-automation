@@ -21,6 +21,15 @@
 
 - include: playbooks/vlan/vlan_configuration_lldp_vlan_interfaces_and_physical_interfaces.yml
 
+# Uninstall packages stack
+- include: playbooks/installation/uninstall_packages.yml
+
+# Reset invaders
+- include: playbooks/master_reset_invaders.yml
+
+# Install quagga
+- include: playbooks/installation/quagga_install.yml
+
 - include: playbooks/vlan_container/vlan_configuration_single_vlan_with_container.yml
 
 - include: playbooks/vlan_container/vlan_configuration_multiple_vlan_with_container.yml
