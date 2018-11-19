@@ -19,6 +19,7 @@
 #
 
 import shlex
+import time
 
 from collections import OrderedDict
 
@@ -153,39 +154,66 @@ def verify_isis_neighbors(module):
     execute_commands(module, 'service {} restart'.format(package_name))
     execute_commands(module, 'service {} status'.format(package_name))
 
-    # Get isis neighbor info
-    cmd = "vtysh -c 'sh isis neighbor'"
-    isis_out = execute_commands(module, cmd)
+    retries = 1
+    found = False
+    retries_summary = ''
 
-    if not isis_out:
-        RESULT_STATUS = False
-        failure_summary += 'On Switch {} '.format(switch_name)
-        failure_summary += 'isis neighbors cannot be verified since '
-        failure_summary += 'output of command {} is None\n'.format(cmd)
-    else:
-        if is_spine:
-            for leaf in leaf_list:
-                if isis_out.count(leaf) != 2:
-                    RESULT_STATUS = False
-                    failure_summary += 'On switch {} '.format(switch_name)
-                    failure_summary += 'two neighbors for {} is not '.format(
-                        leaf)
-                    failure_summary += 'present in the output of {}\n'.format(
-                        cmd)
+    while retries != 6 and not found:
+        # Wait 50 secs(max) for routes to become reachable
+        time.sleep(10)
+        summary = ''
+
+        # Get isis neighbor info
+        cmd = "vtysh -c 'sh isis neighbor'"
+        isis_out = execute_commands(module, cmd)
+
+        if not isis_out:
+            summary += 'On Switch {} '.format(switch_name)
+            summary += 'isis neighbors cannot be verified since '
+            summary += 'output of command {} is None\n'.format(cmd)
         else:
-            for spine in spine_list:
-                if isis_out.count(spine) != 2:
-                    RESULT_STATUS = False
-                    failure_summary += 'On switch {} '.format(switch_name)
-                    failure_summary += 'two neighbors for {} is not '.format(
-                        spine)
-                    failure_summary += 'present in the output of {}\n'.format(
-                        cmd)
+            if is_spine:
+                for leaf in leaf_list:
+                    if isis_out.count(leaf) != 2:
+                        summary += 'On switch {} '.format(switch_name)
+                        summary += 'two neighbors for {} is not '.format(
+                            leaf)
+                        summary += 'present in the output of {}\n'.format(
+                            cmd)
+            else:
+                for spine in spine_list:
+                    if isis_out.count(spine) != 2:
+                        summary += 'On switch {} '.format(switch_name)
+                        summary += 'two neighbors for {} is not '.format(
+                            spine)
+                        summary += 'present in the output of {}\n'.format(
+                            cmd)
 
-        if isis_out.count('Up') != 4:
-            RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'isis neighbors state is not Up\n'
+            if isis_out.count('Up') != 4:
+                summary += 'On switch {} '.format(switch_name)
+                summary += 'isis neighbors state is not Up\n'
+
+        if not summary:
+            found = True
+            summary = 'No. of retries {}'.format(retries)
+        else:
+            retries += 1
+
+    if not found:
+        RESULT_STATUS = False
+        failure_summary += summary
+        retries_summary += 'No. of retries {} approx {} sec(Get isis neighbor info)\n'.format(retries,
+                                                                                            retries * 10)
+    else:
+        retries_summary += 'No. of retries {} approx {} sec(Get isis neighbor info)\n'.format(retries,
+                                                                                            retries * 10)
+    retries = 1
+    found = False
+
+    while retries != 6 and not found:
+        # Wait 50 secs(max) for routes to become reachable
+        time.sleep(10)
+        summary = ''
 
         # Check and verify neighbor routes
         if module.params['check_neighbors']:
@@ -197,17 +225,31 @@ def verify_isis_neighbors(module):
                 if route.startswith('I'):
                     route_count += 1
                     if '115' not in route:
-                        RESULT_STATUS = False
-                        failure_summary += 'On switch {} '.format(switch_name)
-                        failure_summary += 'administrative value 115 is not present'
-                        failure_summary += ' in isis route {}\n'.format(route)
+                        summary += 'On switch {} '.format(switch_name)
+                        summary += 'administrative value 115 is not present'
+                        summary += ' in isis route {}\n'.format(route)
 
             if route_count < 4:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += 'output of {} '.format(cmd)
-                failure_summary += 'is not displaying required isis routes\n'
+                summary += 'On switch {} '.format(switch_name)
+                summary += 'output of {} '.format(cmd)
+                summary += 'is not displaying required isis routes\n'
 
+        if not summary:
+            found = True
+            summary = 'No. of retries {}'.format(retries)
+        else:
+            retries += 1
+
+    if not found:
+        RESULT_STATUS = False
+        failure_summary += summary
+        retries_summary += 'No. of retries {} approx {} sec(Check and verify neighbor routes)\n'.format(retries,
+                                                                                            retries * 10)
+    else:
+        retries_summary += 'No. of retries {} approx {} sec(Check and verify neighbor routes)\n'.format(retries,
+                                                                                            retries * 10)
+
+    HASH_DICT['retries'] = retries_summary
     HASH_DICT['result.detail'] = failure_summary
 
     # Get the GOES status info
