@@ -14,6 +14,7 @@ port_provision_log_dir: /var/log/regression/port_provision
 redis_log_dir: /var/log/regression/redis
 vlan_log_dir: /var/log/regression/vlan
 upgrade_log_dir: /var/log/regression/upgrade
+boot_log_dir: /var/log/regression/boot
 docker_log_dir: /var/log/regression/docker
 issues_log_dir: /var/log/regression/issues
 
