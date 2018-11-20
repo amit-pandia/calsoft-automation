@@ -1,9 +1,9 @@
 ---
 
-- include: ../../playbooks/installation/uninstall_packages.yml
+#- include: ../../playbooks/installation/uninstall_packages.yml
 
 # Reset the setup
-- include: playbooks/master_reset_invaders.yml
+#- include: ../../playbooks/master_reset_invaders.yml
 
 
 - hosts: leaf:spine
@@ -62,7 +62,7 @@
         log_content: "{{ logs['content'] | b64decode }}"
       delegate_to: 127.0.0.1
 
-    - name: reboot the switch
+    - name: Powercycle the switch
       shell: "redis-cli -h {{ bmc_redis_ip }} hset platina psu.powercycle true"
       async: 1
       poll: 0
