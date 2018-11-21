@@ -66,10 +66,15 @@
       shell: "redis-cli -h {{ bmc_redis_ip }} hset platina psu.powercycle true"
       async: 1
       poll: 0
+      delegate_to: 127.0.0.1
       ignore_errors: true
 
     - name: waiting for switch to come back after reboot
       local_action: wait_for host={{ ansible_ssh_host }} state=started port=22 delay=30 timeout=300 connect_timeout=15
+
+    - name: Wait few seconds for GOES to come up
+      pause:
+        seconds: 15
 
     - name: Verify services and interface status after powercycle
       verify_switch_status:
