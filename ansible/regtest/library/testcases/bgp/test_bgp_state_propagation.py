@@ -264,8 +264,8 @@ def verify_quagga_bgp_state_propagation(module):
 
     # Verify bgp routes
     if switch_name != propagate_switch:
-        while retries != 11 and not found:
-            # Wait 100 secs(max) for routes to become reachable
+        while retries != 15 and not found:
+            # Wait 150 secs(max) for routes to become reachable
             time.sleep(10)
             summary = verify_bgp_routes(module, True)
             if not summary:
