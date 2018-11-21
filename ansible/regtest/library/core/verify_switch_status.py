@@ -174,7 +174,7 @@ def verify_port_links(module):
     switch_name = module.params['switch_name']
     speed = '100g'
     media = 'copper'
-    fec = 'none'
+    fec = 'cl91'
     state = 'before' if module.params['before'] else 'after'
     platina_redis_channel = module.params['platina_redis_channel']
 
@@ -213,14 +213,15 @@ def verify_port_links(module):
             failure_summary += 'fec is not set to {} for '.format(fec)
             failure_summary += 'the interface xeth{} {} powercycle\n'.format(eth, state)
 
-        # Verify if port links are up
-        cmd = 'goes hget {} vnet.xeth{}.link'.format(platina_redis_channel, eth)
-        out = run_cli(module, cmd)
-        if 'true' not in out:
-            RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'port link is not up '
-            failure_summary += 'for the interface xeth{} {} powercycle\n'.format(eth, state)
+        if eth%2 != 0:
+            # Verify if port links are up
+            cmd = 'goes hget {} vnet.xeth{}.link'.format(platina_redis_channel, eth)
+            out = run_cli(module, cmd)
+            if 'true' not in out:
+                RESULT_STATUS = False
+                failure_summary += 'On switch {} '.format(switch_name)
+                failure_summary += 'port link is not up '
+                failure_summary += 'for the interface xeth{} {} powercycle\n'.format(eth, state)
 
     # Verify cmdline status
     cmd = 'redis-cli -h 172.17.3.{} hget platina "cmdline.start"'.format(switch_name[-2::])

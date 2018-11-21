@@ -1,11 +1,5 @@
 ---
 
-#- include: ../../playbooks/installation/uninstall_packages.yml
-
-# Reset the setup
-#- include: ../../playbooks/master_reset_invaders.yml
-
-
 - hosts: leaf:spine
   become: true
   ignore_errors: yes

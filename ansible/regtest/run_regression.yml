@@ -48,6 +48,8 @@
 # Run all docker test cases
 - include: docker_main.yml
 
+# Run goes boot playbook
+- include: playbooks/upgrade/goes_boot.yml
 
 - hosts: server_emulator
   become: true
