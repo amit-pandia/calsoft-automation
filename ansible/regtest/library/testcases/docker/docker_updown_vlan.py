@@ -125,7 +125,7 @@ def main():
 
     if module.params['state'] == 'up':
         # Add dummy interface and bring it up
-        cmd = 'ip link add dummy{} type dummy 2> /dev/null'.format(dummy_id)
+        cmd = 'ip link add dummy{} type dummy'.format(dummy_id)
         run_cli(module, cmd)
 
         # Bring up dummy interface

@@ -183,7 +183,7 @@ def verify_vlan_configurations(module):
             failure_summary += 'failed to capture tcpdump output\n'
     else:
         execute_commands(module, 'dhclient xeth{}'.format(eth))
-        time.sleep(5)
+        time.sleep(20)
 
         # Verify that eth interface has fetched an ip from dhcp server
         ip_out = execute_commands(module, 'ifconfig xeth{}'.format(eth))
@@ -201,6 +201,8 @@ def verify_vlan_configurations(module):
 
     # Run dhclient on spine switch and perform tcpdump on leaf switch to check
     # if dhcp request/reply packets can be seen along with tagged packets.
+    time.sleep(10)
+
     if switch_name == leaf_switch:
         cmd = 'timeout 15 tcpdump -c 7 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
         cmd_out = execute_commands(module, cmd)
@@ -219,7 +221,7 @@ def verify_vlan_configurations(module):
             failure_summary += 'failed to capture tcpdump output\n'
     else:
         execute_commands(module, 'dhclient xeth{}.1'.format(eth))
-        time.sleep(120)
+        time.sleep(150)
 
         # Verify that eth interface has fetched an ip from dhcp server
         ip_out = execute_commands(module, 'ifconfig xeth{}.1'.format(eth))
