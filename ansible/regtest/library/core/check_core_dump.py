@@ -153,7 +153,7 @@ def verify_log_dumps(module):
             for line in log_file:
                 if time_stamp in line:
                     for i in range(log_file.index(line), len(log_file)):
-                        if error_msg in log_file[i]:
+                        if error_msg in log_file[i] and 'check_core_dump' not in line:
                             core_dump.append(log_file[i])
                             RESULT_STATUS = False
                     break
