@@ -143,7 +143,7 @@ def verify_bgp_authentication(module):
     execute_commands(module, "vtysh -c 'sh running-config'")
 
     # Restart and check package status
-    execute_commands(module, 'service {} restart'.format(package_name))
+    # execute_commands(module, 'service {} restart'.format(package_name))
     execute_commands(module, 'service {} status'.format(package_name))
 
     # Get all ip routes
