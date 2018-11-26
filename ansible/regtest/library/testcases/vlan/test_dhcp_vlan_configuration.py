@@ -131,6 +131,7 @@ def verify_vlan_configurations(module):
     leaf_switch = module.params['leaf_switch']
     eth = module.params['eth']
     third_octet = switch_name[-2::]
+    retries_summary = ''
 
     # Bring down interfaces that are connected to packet generator
     if switch_name == leaf_switch:
@@ -138,9 +139,7 @@ def verify_vlan_configurations(module):
             execute_commands(module, 'ifconfig xeth{} down'.format(interface))
 
     # Configure vlan interfaces
-    cmd = 'ip link add link xeth{} name xeth{}.1 type vlan id {}'.format(
-        eth, eth, eth
-    )
+    cmd = 'ip link add link xeth{} name xeth{}.1 type vlan id {}'.format(eth, eth, eth)
     execute_commands(module, cmd)
 
     # Assign ip to vlan only for leaf switch on which dhcp is running
@@ -167,76 +166,142 @@ def verify_vlan_configurations(module):
     # Run dhclient on spine switch and perform tcpdump on leaf switch to check
     # if dhcp request/reply packets can be seen along with untagged packets.
     if switch_name == leaf_switch:
-        cmd = 'timeout 15 tcpdump -c 7 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
-        cmd_out = execute_commands(module, cmd)
+        retries = 1
+        found = False
+        while retries != 3 and not found:
+            # Retries for 40 sec (max)
+            summary = ''
+            cmd = 'timeout 20 tcpdump -c 7 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
+            cmd_out = execute_commands(module, cmd)
 
-        if cmd_out:
-            cmd_out = cmd_out.lower()
-            if 'bootp/dhcp' not in cmd_out:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += 'there are no dhcp packets and untagged packets '
-                failure_summary += 'captured in tcpdump for xeth{}\n'.format(eth)
-        else:
+            if cmd_out:
+                if 'bootp/dhcp' not in cmd_out.lower():
+                    summary += 'On switch {} '.format(switch_name)
+                    summary += 'there are no dhcp packets and untagged packets '
+                    summary += 'captured in tcpdump for xeth{}\n'.format(eth)
+            else:
+                summary += 'On switch {} '.format(switch_name)
+                summary += 'failed to capture tcpdump output\n'
+            if not summary:
+                found = True
+                summary = 'On switch {} No of retries {} for xeth{} tcpdump'.format(switch_name, retries, eth)
+            else:
+                retries += 1
+        if not found:
             RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'failed to capture tcpdump output\n'
+            failure_summary += summary
+            retries_summary += 'No. of retries for xeth{} tcpdump is {} approx {} sec(initial verification)\n'.format(
+                eth, retries, retries*20)
+        else:
+            retries_summary += 'No. of retries for xeth{} tcpdump is {} approx {} sec(initial verification)\n'.format(
+                eth, retries, retries*20)
+
+
     else:
         execute_commands(module, 'dhclient xeth{}'.format(eth))
-        time.sleep(20)
 
-        # Verify that eth interface has fetched an ip from dhcp server
-        ip_out = execute_commands(module, 'ifconfig xeth{}'.format(eth))
-        if ip_out:
-            if '192.168.5' not in ip_out:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += 'failed to assign an ip from dhcp server '
-                failure_summary += 'for xeth{}\n'.format(eth)
-        else:
+        retries = 1
+        found = False
+        while retries != 6 and not found:
+            # Wait 25 secs(max) for routes to become reachable
+            time.sleep(5)
+            summary = ''
+            # Verify that eth interface has fetched an ip from dhcp server
+            ip_out = execute_commands(module, 'ifconfig xeth{}'.format(eth))
+            if ip_out:
+                if '192.168.5' not in ip_out:
+                    summary += 'On switch {} '.format(switch_name)
+                    summary += 'failed to assign an ip from dhcp server '
+                    summary += 'for xeth{}\n'.format(eth)
+            else:
+                summary += 'On switch {} '.format(switch_name)
+                summary += 'failed to fetch an ip from dhcp server '
+                summary += 'for xeth{}\n'.format(eth)
+            if not summary:
+                found = True
+                summary = 'No of retries {} for xeth{}'.format(retries, eth)
+            else:
+                retries += 1
+
+        if not found:
             RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'failed to fetch an ip from dhcp server '
-            failure_summary += 'for xeth{}\n'.format(eth)
+            failure_summary += summary
+            retries_summary += 'No. of retries for xeth{} {} approx {} sec(initial verification)\n'.format(
+                eth, retries, retries*5)
+        else:
+            retries_summary += 'No. of retries for xeth{} {} approx {} sec(initial verification)\n'.format(
+                eth, retries, retries*5)
+
 
     # Run dhclient on spine switch and perform tcpdump on leaf switch to check
     # if dhcp request/reply packets can be seen along with tagged packets.
-    time.sleep(10)
-
     if switch_name == leaf_switch:
-        cmd = 'timeout 15 tcpdump -c 7 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
-        cmd_out = execute_commands(module, cmd)
-
-        if cmd_out:
-            cmd_out = cmd_out.lower()
-            if ('bootp/dhcp' not in cmd_out or '802.1q (0x8100)' not in cmd_out or
-                    'vlan {}'.format(eth) not in cmd_out):
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += 'there are no dhcp packets and tagged packets '
-                failure_summary += 'captured in tcpdump for xeth{}\n'.format(eth)
-        else:
+        retries = 1
+        found = False
+        while retries != 3 and not found:
+            # Retries for 40 sec (max)
+            summary = ''
+            cmd = 'timeout 20 tcpdump -c 7 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
+            cmd_out = execute_commands(module, cmd)
+    
+            if cmd_out:
+                cmd_out = cmd_out.lower()
+                if ('bootp/dhcp' not in cmd_out or '802.1q (0x8100)' not in cmd_out or
+                        'vlan {}'.format(eth) not in cmd_out):
+                    summary += 'On switch {} '.format(switch_name)
+                    summary += 'there are no dhcp packets and tagged packets '
+                    summary += 'captured in tcpdump for xeth{}\n'.format(eth)
+            else:
+                summary += 'On switch {} '.format(switch_name)
+                summary += 'failed to capture tcpdump output\n'
+            if not summary:
+                found = True
+                summary = 'On switch {} No of retries {} for xeth{} tcpdump'.format(switch_name, retries, eth)
+            else:
+                retries += 1
+        if not found:
             RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'failed to capture tcpdump output\n'
+            failure_summary += summary
+            retries_summary += 'No. of retries for xeth{} tcpdump is {} approx {} sec(after running dhclient for vlan interface)\n'.format(
+                eth, retries, retries*20)
+        else:
+            retries_summary += 'No. of retries for xeth{} tcpdump is {} approx {} sec(after running dhclient for vlan interface)\n'.format(
+                eth, retries, retries*20)
+
     else:
         execute_commands(module, 'dhclient xeth{}.1'.format(eth))
-        time.sleep(150)
-
-        # Verify that eth interface has fetched an ip from dhcp server
-        ip_out = execute_commands(module, 'ifconfig xeth{}.1'.format(eth))
-        if ip_out:
-            if '192.168.50' not in ip_out:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += 'failed to assign an ip from dhcp server '
-                failure_summary += 'for xeth{}.1\n'.format(eth)
-        else:
+        retries = 1
+        found = False
+        while retries != 9 and not found:
+            # Wait 160 secs(max) for routes to become reachable
+            time.sleep(20)
+            summary = ''
+            # Verify that eth interface has fetched an ip from dhcp server
+            ip_out = execute_commands(module, 'ifconfig xeth{}.1'.format(eth))
+            if ip_out:
+                if '192.168.50' not in ip_out:
+                    summary += 'On switch {} '.format(switch_name)
+                    summary += 'failed to assign an ip from dhcp server '
+                    summary += 'for xeth{}.1\n'.format(eth)
+            else:
+                summary += 'On switch {} '.format(switch_name)
+                summary += 'failed to fetch an ip from dhcp server '
+                summary += 'for xeth{}.1\n'.format(eth)
+            if not summary:
+                found = True
+                summary = 'No of retries {} for xeth{}.1'.format(retries, eth)
+            else:
+                retries += 1
+        if not found:
             RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'failed to fetch an ip from dhcp server '
-            failure_summary += 'for xeth{}.1\n'.format(eth)
+            failure_summary += summary
+            retries_summary += 'No. of retries for xeth{}.1 {} approx {} sec(after running dhclient for vlan interface)\n'.format(
+                eth, retries, retries*20)
+        else:
+            retries_summary += 'No. of retries for xeth{}.1 {} approx {} sec(after running dhclient for vlan interface)\n'.format(
+                eth, retries, retries*20)
 
+    HASH_DICT['retries'] = retries_summary
     HASH_DICT['result.detail'] = failure_summary
 
     # Get the GOES status info
@@ -284,4 +349,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
