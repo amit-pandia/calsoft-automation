@@ -30,7 +30,10 @@
 # Install quagga
 - include: playbooks/installation/quagga_install.yml
 
+# Run all vlan with container test cases
 - include: playbooks/vlan_container/vlan_configuration_single_vlan_with_container.yml
 
 - include: playbooks/vlan_container/vlan_configuration_multiple_vlan_with_container.yml
+
+- include: playbooks/vlan_container/vlan_configuration_dhcp_vlan_container.yml
 
