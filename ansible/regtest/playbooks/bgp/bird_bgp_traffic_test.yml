@@ -117,22 +117,6 @@
         log_content: "{{ logs['content'] | b64decode }}"
       delegate_to: 127.0.0.1
 
-    - name: Get goes version details
-      shell: "goes hget platina package | grep version:"
-      register: version_out
-
-    - name: Get goes tag details
-      shell: "goes hget platina package | grep tag:"
-      register: tag_out
-
-    - name: Store goes version and tag details in redis db
-      store_goes_details:
-        switch_name: "{{ inventory_hostname }}"
-        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        version_details: "{{ version_out.stdout }}"
-        tag_details: "{{ tag_out.stdout }}"
-      delegate_to: 127.0.0.1
-
 
 - hosts: spine
   become: true
@@ -178,69 +162,14 @@
     - shell: "rm ~/iperf-parallel-servers.sh"
 
 
-- hosts: leaf[0]
-  become: true
-  tasks:
-    - name: Delete static routes
-      command: "{{ item }}"
-      with_items:
-      - route del -net 192.168.42.0/24 gw 10.0.21.32
-      - route del -net 192.168.43.0/24 gw 10.0.7.31
-      ignore_errors: yes
-
-
-- hosts: leaf[1]
-  become: true
-  tasks:
-    - name: Delete static routes
-      command: "{{ item }}"
-      with_items:
-      - route del -net 192.168.42.0/24 gw 10.0.3.32
-      - route del -net 192.168.43.0/24 gw 10.0.19.31
-      ignore_errors: yes
-
-
-- hosts: spine[0]
-  become: true
-  tasks:
-    - name: Delete static routes
-      command: "{{ item }}"
-      with_items:
-      - route del -net 192.168.44.0/24 gw 10.0.19.30
-      - route del -net 192.168.45.0/24 gw 10.0.7.29
-      ignore_errors: yes
-
-
-- hosts: spine[1]
-  become: true
-  tasks:
-    - name: Delete static routes
-      command: "{{ item }}"
-      with_items:
-      - route del -net 192.168.44.0/24 gw 10.0.3.30
-      - route del -net 192.168.45.0/24 gw 10.0.21.29
-      ignore_errors: yes
-
-
 - hosts: leaf:spine
   become: true
   tasks:
-    - name: Restore backup of /etc/bird/bird.conf
-      copy:
-        src: "{{ bird_conf_file_bck }}"
-        dest: "{{ bird_conf_file }}"
-        remote_src: true
-        owner: root
-        group: root
-        mode: 0644
+    - include: ../../playbooks/get_goes_version_and_tags.yml
 
-    - name: Remove backup file
-      file:
-        path: "{{ bird_conf_file_bck }}"
-        state: absent
 
-    - name: Delete dummy interface
-      command: "ip link del dummy0 type dummy"
+- include: bird_bgp_traffic_test_reset.yml
+  when: reset_config
 
 
 - hosts: server_emulator
@@ -256,3 +185,13 @@
 
     - debug:
         msg: "Failure summary: {{ result.result_detail }}"
+
+    - lineinfile:
+        path: "{{ regression_summary_report }}"
+        line: "{{ hash_name }}: {{ result.result_status }}"
+
+
+- hosts: leaf:spine
+  become: true
+  tasks:
+    - include: ../../playbooks/get_goes_status.yml start_time={{ hostvars['server_emulator']['start_time'] }} hash_name={{ hostvars['server_emulator']['hash_name'] }}
