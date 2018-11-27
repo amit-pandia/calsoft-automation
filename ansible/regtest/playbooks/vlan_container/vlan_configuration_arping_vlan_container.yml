@@ -19,51 +19,23 @@
       register: start_time
 
     - set_fact:
-        hash_name: "vlan_configuration_transit_vlan_container_{{ start_time.stdout }}"
+        hash_name: "vlan_configuration_arping_vlan_interfaces_and_physical_interfaces_container_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
+
+
+- hosts: leaf:spine
+  become: true
+  tasks:
+    - name: Install arping
+      apt:
+        name: arping
+        state: present
 
 
 - hosts: leaf:spine
   become: true
 
   tasks:
-    - name: Take backup of /etc/quagga/ospfd.conf
-      copy:
-        src: "{{ quagga_ospf_conf_file }}"
-        dest: "{{ quagga_ospf_conf_file_bck }}"
-        remote_src: true
-
-    - name: Add ospf config in /etc/quagga/ospfd.conf
-      blockinfile:
-        path: "{{ quagga_ospf_conf_file }}"
-        marker: ""
-        block: "{{ lookup('file', '../../files/{{inventory_hostname}}/ospf_single_vlan.conf') }}"
-
-    - name: Take backup of /etc/network/interfaces
-      copy:
-        src: "{{ network_interfaces_file }}"
-        dest: "{{ network_interfaces_file_bck }}"
-        remote_src: true
-
-    - name: Copy ipv4 configuration interfaces network file
-      copy:
-        src: "../../files/{{inventory_hostname}}/vlan_on_transit_interfaces"
-        dest: "{{ network_interfaces_file }}"
-        owner: root
-        group: root
-        mode: 0755
-
-    - name: Restart networking service and goes
-      command: "{{ item }}"
-      with_items:
-      - 'ifdown -a --allow vnet'
-      - 'ifup -a --allow vnet'
-      - 'goes restart'
-
-    - name: Wait few seconds for GOES to come up
-      pause:
-        seconds: 15
-
     - name: Pull quagga container image from dockerhub
       command: "docker pull stigt/debian-quagga:latest"
 
@@ -237,7 +209,7 @@
         seconds: 50
 
 
-- hosts: leaf:spine
+- hosts: leaf[0]:spine
   become: yes
 
   vars:
@@ -249,16 +221,15 @@
         path: "{{ vlan_log_dir }}"
         state: directory
 
-    - name: Test vlan configuration single vlan tagged packets
-      test_vlan_transit_configuration_container:
+    - name: Test vlan configuration arping vlan interfaces
+      test_vlan_configuration_ping:
         switch_name: "{{ inventory_hostname }}"
         container: "{{ containers }}"
         ping_switch: "{{ invader }}"
-        leaf_list: "{{ groups['leaf'] }}"
-        spine_list: "{{ groups['spine'] }}"
-        eth_list: "19,3"
+        switch_list: "{{ groups['spine'] }}"
+        eth_list: "1,21"
         tagged: True
-        config_file: "{{ lookup('file', '../../group_vars/{{ invader }}/{{ containers }}') }}"
+        arping: True
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ vlan_log_dir }}"
       register: module_out
@@ -280,16 +251,90 @@
         log_content: "{{ logs['content'] | b64decode }}"
       delegate_to: 127.0.0.1
 
-    - name: Test vlan configuration single vlan untagged packets
-      test_vlan_transit_configuration_container:
+    - name: Test vlan configuration arping physical interfaces
+      test_vlan_configuration_ping:
         switch_name: "{{ inventory_hostname }}"
         container: "{{ containers }}"
         ping_switch: "{{ invader }}"
-        leaf_list: "{{ groups['leaf'] }}"
-        spine_list: "{{ groups['spine'] }}"
-        eth_list: "3,19"
+        switch_list: "{{ groups['spine'] }}"
+        eth_list: "1,21"
         tagged: False
-        config_file: "{{ lookup('file', '../../group_vars/{{ invader }}/{{ containers }}') }}"
+        arping: True
+        eth_ip: "31,32"
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        log_dir_path: "{{ vlan_log_dir }}"
+      register: module_out
+
+    - command: "date +%Y%m%d%T"
+      register: end_time
+
+    - name: Fetch the log file
+      slurp:
+        src: "{{ module_out.log_file_path }}"
+      register: logs
+
+    - name: Store the test result in a hash in redis db on server emulator
+      store_result_in_redis:
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        start_time: "{{ hostvars['server_emulator']['start_time'] }}"
+        end_time: "{{ end_time.stdout }}"
+        hash_dict: "{{ module_out.hash_dict }}"
+        log_content: "{{ logs['content'] | b64decode }}"
+      delegate_to: 127.0.0.1
+
+
+- hosts: leaf[1]:spine
+  become: yes
+
+  vars:
+    - containers: 'L1_vlan_single'
+    - invader: "{{ groups['leaf'][1] }}"
+
+  tasks:
+    - file:
+        path: "{{ vlan_log_dir }}"
+        state: directory
+
+    - name: Test vlan configuration arping vlan interfaces
+      test_vlan_configuration_ping:
+        switch_name: "{{ inventory_hostname }}"
+        container: "{{ containers }}"
+        ping_switch: "{{ invader }}"
+        switch_list: "{{ groups['spine'] }}"
+        eth_list: "19,3"
+        tagged: True
+        arping: True
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        log_dir_path: "{{ vlan_log_dir }}"
+      register: module_out
+
+    - command: "date +%Y%m%d%T"
+      register: end_time
+
+    - name: Fetch the log file
+      slurp:
+        src: "{{ module_out.log_file_path }}"
+      register: logs
+
+    - name: Store the test result in a hash in redis db on server emulator
+      store_result_in_redis:
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        start_time: "{{ hostvars['server_emulator']['start_time'] }}"
+        end_time: "{{ end_time.stdout }}"
+        hash_dict: "{{ module_out.hash_dict }}"
+        log_content: "{{ logs['content'] | b64decode }}"
+      delegate_to: 127.0.0.1
+
+    - name: Test vlan configuration arping physical interfaces
+      test_vlan_configuration_ping:
+        switch_name: "{{ inventory_hostname }}"
+        container: "{{ containers }}"
+        ping_switch: "{{ invader }}"
+        switch_list: "{{ groups['spine'] }}"
+        eth_list: "19,3"
+        tagged: False
+        arping: True
+        eth_ip: "31,32"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ vlan_log_dir }}"
       register: module_out
@@ -345,4 +390,3 @@
   become: true
   tasks:
     - include: ../../playbooks/get_goes_status.yml
-
