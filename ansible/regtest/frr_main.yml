@@ -69,6 +69,15 @@
 
 - include: playbooks/bgp/frr_bgp_convergence.yml
 
+# Uninstall packages stack
+- include: playbooks/installation/uninstall_packages.yml
+
+# Reset the setup
+- include: playbooks/master_reset_invaders.yml
+
+# Install frr
+- include: playbooks/installation/frr_install.yml
+
 - include: playbooks/bgp/frr_bgp_traffic_test.yml
 
 
