@@ -140,28 +140,28 @@ def verify_vlan_configurations(module):
     # Bring down interfaces that are connected to packet generator
     if switch_name == leaf_switch:
         for interface in [x for x in range(1, 33) if x % 2 == 0]:
-            execute_commands(module, 'ifconfig eth-{}-1 down'.format(interface))
+            execute_commands(module, 'ifconfig xeth{} down'.format(interface))
 
     # Configure vlan interfaces
-    cmd = 'ip link add link eth-{}-1 name eth-{}-1.1 type vlan id {}'.format(
+    cmd = 'ip link add link xeth{} name xeth{}.1 type vlan id {}'.format(
         eth, eth, eth
     )
     execute_commands(module, cmd)
 
     # Assign ip to vlan only for leaf switch on which dhcp is running
     if switch_name == leaf_switch:
-        execute_commands(module, 'ifconfig eth-{}-1.1 192.168.50.{}/24'.format(
+        execute_commands(module, 'ifconfig xeth{}.1 192.168.50.{}/24'.format(
             eth, third_octet
         ))
 
         # Verify vlan interfaces got created with ip assigned to them
-        ip_out = execute_commands(module, 'ifconfig eth-{}-1.1'.format(eth))
+        ip_out = execute_commands(module, 'ifconfig xeth{}.1'.format(eth))
         if ip_out:
             if '192.168.50.{}'.format(third_octet) not in ip_out:
                 RESULT_STATUS = False
                 failure_summary += 'On switch {} '.format(switch_name)
                 failure_summary += 'failed to configure vlan on interface '
-                failure_summary += 'eth-{}-1.1\n'.format(eth)
+                failure_summary += 'xeth{}.1\n'.format(eth)
 
     # Restart DHCP server
     if switch_name == leaf_switch:
@@ -171,16 +171,16 @@ def verify_vlan_configurations(module):
 
     # Bring up the Containers
     if switch_name == leaf_switch:
-        cmd = '~/./docker_move.sh up {} eth-{}-1.1 192.168.50.{}/24'.format(container, eth, third_octet)
+        cmd = '~/./docker_move.sh up {} xeth{}.1 192.168.50.{}/24'.format(container, eth, third_octet)
     else:
-        cmd = '~/./docker_move.sh up {} eth-{}-1.1'.format(container, eth)
+        cmd = '~/./docker_move.sh up {} xeth{}.1'.format(container, eth)
 
     execute_commands(module, cmd)
 
     # Run dhclient on spine switch and perform tcpdump on leaf switch to check
     # if dhcp request/reply packets can be seen along with untagged packets.
     if switch_name == leaf_switch:
-        cmd = 'timeout 15 tcpdump -c 7 -net -i eth-{}-1 not arp and not icmp'.format(eth)
+        cmd = 'timeout 15 tcpdump -c 7 -net -i xeth{} not arp and not icmp'.format(eth)
         cmd_out = execute_commands(module, cmd)
 
         if cmd_out:
@@ -189,33 +189,33 @@ def verify_vlan_configurations(module):
                 RESULT_STATUS = False
                 failure_summary += 'On switch {} '.format(switch_name)
                 failure_summary += 'there are no dhcp packets and untagged packets '
-                failure_summary += 'captured in tcpdump for eth-{}-1\n'.format(eth)
+                failure_summary += 'captured in tcpdump for xeth{}\n'.format(eth)
         else:
             RESULT_STATUS = False
             failure_summary += 'On switch {} '.format(switch_name)
             failure_summary += 'failed to capture tcpdump output\n'
     else:
-        execute_commands(module, 'dhclient eth-{}-1'.format(eth))
+        execute_commands(module, 'dhclient xeth{}'.format(eth))
         time.sleep(5)
 
         # Verify that eth interface has fetched an ip from dhcp server
-        ip_out = execute_commands(module, 'ifconfig eth-{}-1'.format(eth))
+        ip_out = execute_commands(module, 'ifconfig xeth{}'.format(eth))
         if ip_out:
             if '192.168.5' not in ip_out:
                 RESULT_STATUS = False
                 failure_summary += 'On switch {} '.format(switch_name)
                 failure_summary += 'failed to assign an ip from dhcp server '
-                failure_summary += 'for eth-{}-1\n'.format(eth)
+                failure_summary += 'for xeth{}\n'.format(eth)
         else:
             RESULT_STATUS = False
             failure_summary += 'On switch {} '.format(switch_name)
             failure_summary += 'failed to fetch an ip from dhcp server '
-            failure_summary += 'for eth-{}-1\n'.format(eth)
+            failure_summary += 'for xeth{}\n'.format(eth)
 
     # Run dhclient on spine switch and perform tcpdump on leaf switch to check
     # if dhcp request/reply packets can be seen along with tagged packets.
     if switch_name == leaf_switch:
-        cmd = 'timeout 25 tcpdump -net -i eth-{}-1 port 67 and port 68'.format(eth)
+        cmd = 'timeout 25 tcpdump -net -i xeth{} port 67 and port 68'.format(eth)
         cmd_out = execute_commands(module, cmd)
 
         if cmd_out:
@@ -223,13 +223,13 @@ def verify_vlan_configurations(module):
                 RESULT_STATUS = False
                 failure_summary += 'On switch {} '.format(switch_name)
                 failure_summary += 'there are no dhcp packets and tagged packets '
-                failure_summary += 'captured in tcpdump for eth-{}-1\n'.format(eth)
+                failure_summary += 'captured in tcpdump for xeth{}\n'.format(eth)
         else:
             RESULT_STATUS = False
             failure_summary += 'On switch {} '.format(switch_name)
             failure_summary += 'failed to capture tcpdump output\n'
     else:
-        execute_commands(module, 'docker exec -i {} timeout 25 dhclient eth-{}-1.1'.format(container, eth))
+        execute_commands(module, 'docker exec -i {} timeout 25 dhclient xeth{}.1'.format(container, eth))
         time.sleep(60)
 
     HASH_DICT['result.detail'] = failure_summary
