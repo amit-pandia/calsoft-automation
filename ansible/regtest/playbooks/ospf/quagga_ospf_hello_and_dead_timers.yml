@@ -80,6 +80,8 @@
         eth_list: "7,17"
         hello_timer: "5"
         dead_timer: "10"
+        leaf_list: "{{ groups['leaf'] }}"
+        spine_list: "{{ groups['spine'] }}"
         package_name: "quagga"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ ospf_log_dir }}"
