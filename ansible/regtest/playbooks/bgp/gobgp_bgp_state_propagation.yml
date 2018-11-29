@@ -142,7 +142,7 @@
 
     - name: Wait 40 seconds for route to become reachable
       pause:
-        seconds: 40
+        seconds: 60
 
 
 - hosts: leaf[0]:spine
