@@ -60,8 +60,6 @@
         switch_name: "{{ inventory_hostname }}"
         config_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/ospf_with_different_areas.conf') }}"
         package_name: "quagga"
-        spine_list: "{{ groups['spine'] }}"
-        leaf_list: "{{ groups['leaf'] }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ ospf_log_dir }}"
       register: module_out
