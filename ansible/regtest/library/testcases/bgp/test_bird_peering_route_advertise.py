@@ -146,6 +146,10 @@ def verify_bird_peering(module):
     package_name = module.params['package_name']
     spine_list = module.params['spine_list']
     leaf_list = module.params['leaf_list']
+    is_ping = module.params['is_ping']
+   
+    leaf_list1 = leaf_list[:]
+    spine_list1 = spine_list[:]
 
     # Get the current/running configurations
     execute_commands(module, 'cat /etc/bird/bird.conf')
@@ -187,6 +191,28 @@ def verify_bird_peering(module):
         failure_summary += 'On switch {} '.format(switch_name)
         failure_summary += 'result cannot be verified since '
         failure_summary += 'output of command {} is None'.format(cmd)
+ 
+    aleaf = False
+    if is_ping:
+	packet_count = 5
+	if switch_name in leaf_list1:
+		aleaf = True
+		p_list = leaf_list1
+	elif switch_name in spine_list1:
+		p_list = spine_list1
+
+	p_list.remove(switch_name)
+	cmd = "ping -c {} -I 192.168.{}.1 192.168.{}.1".format(packet_count, switch_name[-2:], p_list[0][-2:])
+
+	ping_out = execute_commands(module, cmd)
+
+        if not '{} received'.format(packet_count) in ping_out:
+            RESULT_STATUS = False
+            failure_summary += 'Ping from switch {} to {}'.format(switch_name, p_list[0])
+            failure_summary += ' for {} packets'.format(packet_count)
+            failure_summary += ' are not received in the output of '
+            failure_summary += 'command {}\n'.format(cmd)
+	    
 
     HASH_DICT['result.detail'] = failure_summary
 
@@ -199,6 +225,7 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
+            is_ping=dict(required=False, type='bool', default=False),
             package_name=dict(required=False, type='str'),
             spine_list=dict(required=False, type='list', default=[]),
             leaf_list=dict(required=False, type='list', default=[]),

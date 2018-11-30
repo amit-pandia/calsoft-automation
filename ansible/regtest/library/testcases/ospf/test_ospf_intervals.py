@@ -149,6 +149,11 @@ def verify_ospf_intervals(module):
     hello_timer = module.params['hello_timer']
     dead_timer = module.params['dead_timer']
     eth_list = module.params['eth_list'].split(',')
+    spine_list = module.params['spine_list']
+    leaf_list = module.params['leaf_list']
+
+    alist = leaf_list + spine_list
+    alist.remove(switch_name)
 
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
@@ -247,6 +252,21 @@ def verify_ospf_intervals(module):
                 failure_summary += 'On switch {} '.format(switch_name)
                 failure_summary += 'ospf neighbors cannot be verified since '
                 failure_summary += 'output of command {} is None\n'.format(cmd)
+<<<<<<< Updated upstream
+=======
+
+    if alist:
+	packet_count = 5
+	for val in alist:
+		cmd = "ping -c {} -I 192.168.{}.1 192.168.{}.1".format(packet_count, switch_name[-2:], val[-2:])
+		ping_out = execute_commands(module, cmd)
+		if not '{} received'.format(packet_count) in ping_out:
+		    RESULT_STATUS = False
+		    failure_summary += 'Ping from switch {} to {}'.format(switch_name, val)
+		    failure_summary += ' for {} packets'.format(packet_count)
+		    failure_summary += ' are not received in the output of '
+		    failure_summary += 'command {}\n'.format(cmd)
+>>>>>>> Stashed changes
 
     HASH_DICT['result.detail'] = failure_summary
 
@@ -262,7 +282,9 @@ def main():
             interval_switch=dict(required=False, type='str'),
             eth_list=dict(required=False, type='str'),
             hello_timer=dict(required=False, type='str'),
-            dead_timer=dict(required=False, type='str'),
+            leaf_list=dict(require=False, type='list'),
+	    spine_list=dict(required=False, type='list'),
+	    dead_timer=dict(required=False, type='str'),
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
