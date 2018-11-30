@@ -39,5 +39,3 @@
     - name: Wait few seconds for GOES to come up
       pause:
         seconds: 10
-
-    - command: "goes restart"
