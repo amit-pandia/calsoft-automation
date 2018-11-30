@@ -14,7 +14,7 @@
         var: goes_version.stdout_lines
 
     - name: Get GoES tag details
-      shell: "goes version"
+      shell: "goes vnetd -version"
       register: goes_tags
 
     - name: Print GoES tag details
