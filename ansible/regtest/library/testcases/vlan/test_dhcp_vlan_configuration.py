@@ -243,7 +243,6 @@ def verify_vlan_configurations(module):
             summary = ''
             cmd = 'timeout 20 tcpdump -c 7 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
             cmd_out = execute_commands(module, cmd)
-    
             if cmd_out:
                 cmd_out = cmd_out.lower()
                 if ('bootp/dhcp' not in cmd_out or '802.1q (0x8100)' not in cmd_out or
