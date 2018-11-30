@@ -59,7 +59,6 @@
       test_bgp_route_advertise:
         switch_name: "{{ inventory_hostname }}"
         spine_list: "{{ groups['spine'] }}"
-        is_ping: True
         leaf_list: "{{ groups['leaf'] }}"
         package_name: "frr"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
