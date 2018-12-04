@@ -68,23 +68,6 @@
         log_dir_path: "{{ ospf_log_dir }}"
       register: module_out
 
-    - command: "date +%Y%m%d%T"
-      register: end_time
-
-    - name: Fetch the log file
-      slurp:
-        src: "{{ module_out.log_file_path }}"
-      register: logs
-
-    - name: Store the test result in a hash in redis db on server emulator
-      store_result_in_redis:
-        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        start_time: "{{ hostvars['server_emulator']['start_time'] }}"
-        end_time: "{{ end_time.stdout }}"
-        hash_dict: "{{ module_out.hash_dict }}"
-        log_content: "{{ logs['content'] | b64decode }}"
-      delegate_to: 127.0.0.1
-
 
 - hosts: spine
   become: true
@@ -113,23 +96,6 @@
         log_dir_path: "{{ ospf_log_dir }}"
       register: module_out
 
-    - command: "date +%Y%m%d%T"
-      register: end_time
-
-    - name: Fetch the log file
-      slurp:
-        src: "{{ module_out.log_file_path }}"
-      register: logs
-
-    - name: Store the test result in a hash in redis db on server emulator
-      store_result_in_redis:
-        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        start_time: "{{ hostvars['server_emulator']['start_time'] }}"
-        end_time: "{{ end_time.stdout }}"
-        hash_dict: "{{ module_out.hash_dict }}"
-        log_content: "{{ logs['content'] | b64decode }}"
-      delegate_to: 127.0.0.1
-
 
 - hosts: spine
   become: true
@@ -144,35 +110,6 @@
     - name: Wait few secs
       pause:
         seconds: 2
-
-    - name: Verify ospf configuration
-      test_ospf_multipath:
-        switch_name: "{{ inventory_hostname }}"
-        eth_list: "3,7,19"
-        spine_list: "{{ groups['spine'] }}"
-        leaf_list: "{{ groups['leaf'] }}"
-        package_name: "quagga"
-        stage: "after bringing interface up"
-        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        log_dir_path: "{{ ospf_log_dir }}"
-      register: module_out
-
-    - command: "date +%Y%m%d%T"
-      register: end_time
-
-    - name: Fetch the log file
-      slurp:
-        src: "{{ module_out.log_file_path }}"
-      register: logs
-
-    - name: Store the test result in a hash in redis db on server emulator
-      store_result_in_redis:
-        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        start_time: "{{ hostvars['server_emulator']['start_time'] }}"
-        end_time: "{{ end_time.stdout }}"
-        hash_dict: "{{ module_out.hash_dict }}"
-        log_content: "{{ logs['content'] | b64decode }}"
-      delegate_to: 127.0.0.1
 
     - name: Execute commands
       command: "goes restart"
@@ -192,23 +129,6 @@
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ ospf_log_dir }}"
       register: module_out
-
-    - command: "date +%Y%m%d%T"
-      register: end_time
-
-    - name: Fetch the log file
-      slurp:
-        src: "{{ module_out.log_file_path }}"
-      register: logs
-
-    - name: Store the test result in a hash in redis db on server emulator
-      store_result_in_redis:
-        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        start_time: "{{ hostvars['server_emulator']['start_time'] }}"
-        end_time: "{{ end_time.stdout }}"
-        hash_dict: "{{ module_out.hash_dict }}"
-        log_content: "{{ logs['content'] | b64decode }}"
-      delegate_to: 127.0.0.1
 
     - name: reboot the switch
       shell: sleep 2 && shutdown -r now
