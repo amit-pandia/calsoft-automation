@@ -144,7 +144,6 @@ def get_config(module):
     Method to get running config and package status.
     :param module: The Ansible module to fetch input parameters.
     """
-    global RESULT_STATUS, HASH_DICT
     package_name = module.params['package_name']
 
     # Get the current/running configurations
@@ -163,6 +162,7 @@ def verify_dummy_ping(module):
     failure_summary = ''
     switch_name = module.params['switch_name']
     leaf_list = module.params['leaf_list']
+    stage = module.params['stage']
 
     leaf_list.remove(switch_name)
     nei_ip = '192.168.{}.1'.format(leaf_list[0][-2::])
@@ -172,9 +172,9 @@ def verify_dummy_ping(module):
         RESULT_STATUS = False
         failure_summary += 'From switch {} '.format(switch_name)
         failure_summary += 'neighbor ip {} '.format(nei_ip)
-        failure_summary += 'is not getting pinged\n'
+        failure_summary += 'is not getting pinged {}\n'.format(stage)
 
-    HASH_DICT['result.detail'] = failure_summary
+    return failure_summary
 
 
 def verify_fib(module):
@@ -218,7 +218,7 @@ def verify_fib(module):
             failure_summary += 'fib entry for xeth{} cannot be verified in the '.format(interface)
             failure_summary += 'in the output of command {} {}\n'.format(cmd, stage)
 
-    HASH_DICT['result.detail'] = failure_summary
+    return failure_summary
 
 
 def verify_ip_route(module):
@@ -263,7 +263,7 @@ def verify_ip_route(module):
             failure_summary += 'ip route for xeth{} cannot be verified '.format(interface)
             failure_summary += 'in the output of command {} {}\n'.format(cmd, stage)
 
-    HASH_DICT['result.detail'] = failure_summary
+    return failure_summary
 
 
 def verify_ospf_neighbors(module):
@@ -301,7 +301,7 @@ def verify_ospf_neighbors(module):
                 failure_summary += 'ospf neighbors are not present '
                 failure_summary += 'in the output of command {} {}\n'.format(cmd, stage)
 
-    HASH_DICT['result.detail'] = failure_summary
+    return failure_summary
 
 
 def main():
@@ -321,6 +321,7 @@ def main():
     )
 
     global HASH_DICT, RESULT_STATUS
+    failure_summary = ''
     switch_name = module.params['switch_name']
     leaf_list = module.params['leaf_list']
     stage = module.params['stage']
@@ -332,11 +333,13 @@ def main():
         get_config(module)
 
     # Verify ospf neighbors
-    verify_ospf_neighbors(module)
-    verify_fib(module)
-    verify_ip_route(module)
+    failure_summary += verify_ospf_neighbors(module)
+    failure_summary += verify_fib(module)
+    failure_summary += verify_ip_route(module)
     if is_leaf:
-        verify_dummy_ping(module)
+        failure_summary += verify_dummy_ping(module)
+
+    HASH_DICT['result.detail'] = failure_summary
 
     # Calculate the entire test result
     HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
@@ -360,6 +363,6 @@ def main():
         log_file_path=log_file_path
     )
 
+
 if __name__ == '__main__':
     main()
-
