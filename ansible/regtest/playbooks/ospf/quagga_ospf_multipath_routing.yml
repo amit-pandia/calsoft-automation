@@ -41,7 +41,7 @@
         path: "{{ quagga_ospf_conf_file }}"
         marker: ""
         block: "{{ lookup('file', '../../files/{{inventory_hostname}}/ospf_multipath.conf') }}"
-      insertbefore: "^line vty"
+        insertbefore: "^line vty"
 
     - name: Restart quagga service
       service:
