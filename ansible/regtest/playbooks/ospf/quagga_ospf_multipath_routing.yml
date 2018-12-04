@@ -19,7 +19,7 @@
       register: start_time
 
     - set_fact:
-        hash_name: "qugga_ospf_multipath_routing_{{ start_time.stdout }}"
+        hash_name: "quagga_ospf_multipath_routing_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
 
 
@@ -219,6 +219,10 @@
     - name: waiting for switch to come back after reboot
       local_action: wait_for host={{ ansible_ssh_host }} state=started port=22 delay=30 timeout=300 connect_timeout=15
 
+    - name: Add dummy interface
+      add_dummy_interface:
+        switch_name: "{{ inventory_hostname }}"
+
     - name: Verify ospf configuration
       test_ospf_multipath:
         switch_name: "{{ inventory_hostname }}"
@@ -251,7 +255,7 @@
     - include: ../../playbooks/get_goes_version_and_tags.yml
 
 
-- include: qugga_ospf_multipath_routing_reset.yml
+- include: quagga_ospf_multipath_routing_reset.yml
   when: reset_config
 
 
