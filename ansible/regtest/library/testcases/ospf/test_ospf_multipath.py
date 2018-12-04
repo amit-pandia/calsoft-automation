@@ -207,12 +207,12 @@ def verify_fib(module):
             failure_summary += 'output of command {} {}\n'.format(cmd, stage)
 
     for eth in eth_list:
-        if interface in eth and 'rewrite xeth{}'.format(eth) in out:
+        if interface and interface in eth and 'rewrite xeth{}'.format(eth) in out:
             RESULT_STATUS = False
             failure_summary += 'On Switch {} '.format(switch_name)
             failure_summary += 'fib entry for xeth{} is still there even {} '.format(interface, stage)
             failure_summary += 'in the output of command {}\n'.format(cmd)
-        elif 'rewrite xeth{}'.format(eth) not in out:
+        elif interface not in eth and 'rewrite xeth{}'.format(eth) not in out:
             RESULT_STATUS = False
             failure_summary += 'On Switch {} '.format(switch_name)
             failure_summary += 'fib entry for xeth{} cannot be verified in the '.format(interface)
@@ -252,15 +252,15 @@ def verify_ip_route(module):
             failure_summary += 'output of command {} {}\n'.format(cmd, stage)
 
     for eth in eth_list:
-        if interface in eth and 'xeth{} weight 1'.format(eth) in out:
+        if interface and interface in eth and 'xeth{} weight 1'.format(eth) in out:
             RESULT_STATUS = False
             failure_summary += 'On Switch {} '.format(switch_name)
-            failure_summary += 'fib entry for xeth{} is still there even {} '.format(interface, stage)
+            failure_summary += 'ip route for xeth{} is still there even {} '.format(interface, stage)
             failure_summary += 'in the output of command {}\n'.format(cmd)
-        elif 'rewrite xeth{} weight 1'.format(eth) not in out:
+        elif interface not in eth and 'rewrite xeth{} weight 1'.format(eth) not in out:
             RESULT_STATUS = False
             failure_summary += 'On Switch {} '.format(switch_name)
-            failure_summary += 'fib entry for xeth{} cannot be verified '.format(interface)
+            failure_summary += 'ip route for xeth{} cannot be verified '.format(interface)
             failure_summary += 'in the output of command {} {}\n'.format(cmd, stage)
 
     HASH_DICT['result.detail'] = failure_summary
@@ -328,7 +328,7 @@ def main():
     is_leaf = True if switch_name in leaf_list else False
 
     # Get running configs and package status initially
-    if 'initial' in stage:
+    if 'initial stage' in stage:
         get_config(module)
 
     # Verify ospf neighbors
