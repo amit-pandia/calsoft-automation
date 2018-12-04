@@ -134,7 +134,7 @@
 - hosts: spine
   become: true
   tasks:
-    - name: Bring down interface on spines
+    - name: Bring up interface on spines
       command: 'ifconfig xeth3 up'
 
 

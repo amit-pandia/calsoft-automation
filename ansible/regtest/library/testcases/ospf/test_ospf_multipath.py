@@ -288,10 +288,10 @@ def verify_ospf_neighbors(module):
             failure_summary += 'ospf neighbors cannot be verified since '
             failure_summary += 'output of command {} is None {}\n'.format(cmd, stage)
         else:
-            if interface in eth and 'xeth{}'.format(eth) in out:
+            if interface and interface in eth and 'xeth{}'.format(eth) in out:
                 RESULT_STATUS = False
                 failure_summary += 'On Switch {} '.format(switch_name)
-                failure_summary += 'ospf neighbor for interface xeth{} is still there '
+                failure_summary += 'ospf neighbor for interface xeth{} is still there '.format(interface)
                 failure_summary += 'even {} in the '.format(stage)
                 failure_summary += 'output of command {}\n'.format(cmd)
 
