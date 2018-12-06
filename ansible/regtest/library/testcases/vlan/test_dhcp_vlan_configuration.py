@@ -241,7 +241,7 @@ def verify_vlan_configurations(module):
         while retries != 3 and not found:
             # Retries for 40 sec (max)
             summary = ''
-            cmd = 'timeout 20 tcpdump -c 7 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
+            cmd = 'timeout 20 tcpdump -c 25 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
             cmd_out = execute_commands(module, cmd)
             if cmd_out:
                 cmd_out = cmd_out.lower()

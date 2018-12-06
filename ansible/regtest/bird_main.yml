@@ -44,7 +44,7 @@
 # Install bird
 - include: playbooks/installation/bird_install.yml
 
-- include: playbooks/bgp/bird_bgp_peering_redundancy.yml
+#- include: playbooks/bgp/bird_bgp_peering_redundancy.yml
 
 - include: playbooks/bgp/bird_bgp_peering_consistency.yml
 
