@@ -241,11 +241,11 @@ def verify_vlan_configurations(module):
         while retries != 3 and not found:
             # Retries for 40 sec (max)
             summary = ''
-            cmd = 'timeout 20 tcpdump -c 25 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
+            cmd = 'timeout 25 tcpdump -c 25 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
             cmd_out = execute_commands(module, cmd)
             if cmd_out:
                 cmd_out = cmd_out.lower()
-                if ('bootp/dhcp' not in cmd_out or '802.1q (0x8100)' not in cmd_out or
+                if ('802.1q (0x8100)' not in cmd_out or
                         'vlan {}'.format(eth) not in cmd_out):
                     summary += 'On switch {} '.format(switch_name)
                     summary += 'there are no dhcp packets and tagged packets '
