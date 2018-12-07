@@ -131,6 +131,11 @@ def verify_ospf_with_different_areas(module):
     switch_name = module.params['switch_name']
     package_name = module.params['package_name']
     config_file = module.params['config_file']
+    leaf_list = module.params['leaf_list']
+    spine_list = module.params['spine_list']
+    alist = None
+    if spine_list and leaf_list:
+	    alist = leaf_list + spine_list
 
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
@@ -166,6 +171,22 @@ def verify_ospf_with_different_areas(module):
         failure_summary += 'ospf routes cannot be verified since '
         failure_summary += 'output of command {} is None'.format(cmd)
 
+    if alist:
+	packet_count = 5
+	alist.remove(switch_name)	
+	for val in alist:
+		cmd = "ping -c {} -I 192.168.{}.1 192.168.{}.1".format(packet_count, switch_name[-2:], val[-2:])
+
+		ping_out = execute_commands(module, cmd)
+
+		if '100% packet loss' in ping_out:
+		    RESULT_STATUS = False
+		    failure_summary += 'Ping from switch {} to {}'.format(switch_name, val)
+		    failure_summary += ' for {} packets'.format(packet_count)
+		    failure_summary += ' are not received in the output of '
+		    failure_summary += 'command {}\n'.format(cmd)
+
+
     HASH_DICT['result.detail'] = failure_summary
 
     # Get the GOES status info
@@ -179,6 +200,8 @@ def main():
             switch_name=dict(required=False, type='str'),
             config_file=dict(required=False, type='str', default=''),
             package_name=dict(required=False, type='str'),
+	    leaf_list=dict(required=False, type='list'),
+	    spine_list=dict(required=False, type='list'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
         )

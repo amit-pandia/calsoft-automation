@@ -22,6 +22,8 @@ import shlex
 
 from collections import OrderedDict
 
+import time
+
 from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
@@ -131,11 +133,19 @@ def verify_bgp_quagga_convergence(module):
     package_name = module.params['package_name']
     converge_switch = module.params['converge_switch']
 
+    spine_list = module.params['spine_list']
+    leaf_list = module.params['leaf_list']
+    is_ping = module.params['is_ping']
+
+    leaf_list1 = leaf_list[:]
+    spine_list1 = spine_list[:]
+
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
 
     # Restart and check package status
     execute_commands(module, 'service {} restart'.format(package_name))
+    time.sleep(55)
     execute_commands(module, 'service {} status'.format(package_name))
 
     if switch_name != converge_switch:
@@ -158,6 +168,23 @@ def verify_bgp_quagga_convergence(module):
             failure_summary += 'bgp convergence cannot be verified '
             failure_summary += 'because output of command {} is None'.format(cmd)
 
+    if is_ping:
+        packet_count = 5
+        p_list = leaf_list1 + spine_list1
+	p_list.remove(switch_name)
+        for val in p_list:
+                cmd = "ping -c {} -I 192.168.{}.1 192.168.{}.1".format(packet_count, switch_name[-2:], val[-2:])
+
+                ping_out = execute_commands(module, cmd)
+
+                if '100% packet loss' in ping_out:
+                    RESULT_STATUS = False
+                    failure_summary += 'Ping from switch {} to {}'.format(switch_name, val)
+                    failure_summary += ' for {} packets'.format(packet_count)
+                    failure_summary += ' are not received in the output of '
+                    failure_summary += 'command {}\n'.format(cmd)
+
+
     HASH_DICT['result.detail'] = failure_summary
 
     # Get the GOES status info
@@ -169,6 +196,9 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
+	    spine_list=dict(required=False, type='list', default=[]),
+            leaf_list=dict(required=False, type='list', default=[]),
+            is_ping=dict(required=False, type='bool'),
             converge_switch=dict(required=False, type='str'),
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),

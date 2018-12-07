@@ -148,6 +148,10 @@ def verify_bgp_route_advertise(module):
     is_ibgp = module.params['is_ibgp']
     spine_list = module.params['spine_list']
     leaf_list = module.params['leaf_list']
+    is_ping = module.params['is_ping']
+
+    leaf_list1 = leaf_list[:]
+    spine_list1 = spine_list[:]
 
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
@@ -185,6 +189,26 @@ def verify_bgp_route_advertise(module):
         failure_summary += 'because output of command {} '.format(cmd)
         failure_summary += 'is None'
 
+    if is_ping:
+	packet_count = 5
+        if switch_name in leaf_list1:
+                aleaf = True
+                p_list = leaf_list1
+        elif switch_name in spine_list1:
+                p_list = spine_list1
+
+        p_list.remove(switch_name)
+        cmd = "ping -c {} -I 192.168.{}.1 192.168.{}.1".format(packet_count, switch_name[-2:], p_list[0][-2:])
+
+        ping_out = execute_commands(module, cmd)
+
+        if '100% packet loss' in ping_out:
+            RESULT_STATUS = False
+            failure_summary += 'Ping from switch {} to {}'.format(switch_name, p_list[0])
+            failure_summary += ' for {} packets'.format(packet_count)
+            failure_summary += ' are not received in the output of '
+            failure_summary += 'command {}\n'.format(cmd)
+
     # Store the failure summary in hash
     HASH_DICT['result.detail'] = failure_summary
 
@@ -199,7 +223,8 @@ def main():
             switch_name=dict(required=False, type='str'),
             spine_list=dict(required=False, type='list', default=[]),
             leaf_list=dict(required=False, type='list', default=[]),
-            package_name=dict(required=False, type='str'),
+            is_ping=dict(required=False, type='bool'),
+	    package_name=dict(required=False, type='str'),
             is_ibgp=dict(required=False, type='bool', default=False),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),

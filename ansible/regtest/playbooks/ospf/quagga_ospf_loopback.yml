@@ -62,6 +62,7 @@
         spine_list: "{{ groups['spine'] }}"
         leaf_list: "{{ groups['leaf'] }}"
         package_name: "quagga"
+        is_ping: True
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ ospf_log_dir }}"
       register: module_out

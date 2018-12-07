@@ -86,6 +86,9 @@
       test_bgp_convergence:
         switch_name: "{{ inventory_hostname }}"
         converge_switch: "{{ groups['leaf'][0] }}"
+        spine_list: "{{ groups['spine'] }}"
+        is_ping: True
+        leaf_list: "{{ groups['leaf'] }}"
         package_name: "frr"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ bgp_log_dir }}"

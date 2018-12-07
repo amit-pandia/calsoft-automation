@@ -81,7 +81,7 @@
   tasks:
     - name: Wait few secs
       pause:
-        seconds: 2
+        seconds: 20
 
     - name: Verify ospf configuration
       test_ospf_multipath:
@@ -109,7 +109,7 @@
   tasks:
     - name: Wait few secs
       pause:
-        seconds: 2
+        seconds: 20
 
     - name: Execute commands
       command: "goes restart"
@@ -142,6 +142,10 @@
     - name: Add dummy interface
       add_dummy_interface:
         switch_name: "{{ inventory_hostname }}"
+
+    - name: Wait few secs
+      pause:
+        seconds: 20
 
     - name: Verify ospf configuration
       test_ospf_multipath:
