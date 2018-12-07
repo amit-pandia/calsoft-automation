@@ -165,39 +165,39 @@ def verify_vlan_configurations(module):
 
     # Run dhclient on spine switch and perform tcpdump on leaf switch to check
     # if dhcp request/reply packets can be seen along with untagged packets.
-    if switch_name == leaf_switch:
-        retries = 1
-        found = False
-        while retries != 3 and not found:
-            # Retries for 40 sec (max)
-            summary = ''
-            cmd = 'timeout 20 tcpdump -c 7 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
-            cmd_out = execute_commands(module, cmd)
+    if switch_name != leaf_switch:
+        # retries = 1
+        # found = False
+        # while retries != 3 and not found:
+        #     # Retries for 40 sec (max)
+        #     summary = ''
+        #     cmd = 'timeout 20 tcpdump -c 7 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
+        #     cmd_out = execute_commands(module, cmd)
+        #
+        #     if cmd_out:
+        #         if 'bootp/dhcp' not in cmd_out.lower():
+        #             summary += 'On switch {} '.format(switch_name)
+        #             summary += 'there are no dhcp packets and untagged packets '
+        #             summary += 'captured in tcpdump for xeth{}\n'.format(eth)
+        #     else:
+        #         summary += 'On switch {} '.format(switch_name)
+        #         summary += 'failed to capture tcpdump output\n'
+        #     if not summary:
+        #         found = True
+        #         summary = 'On switch {} No of retries {} for xeth{} tcpdump'.format(switch_name, retries, eth)
+        #     else:
+        #         retries += 1
+        # if not found:
+        #     RESULT_STATUS = False
+        #     failure_summary += summary
+        #     retries_summary += 'No. of retries for xeth{} tcpdump is {} approx {} sec(initial verification)\n'.format(
+        #         eth, retries, retries*20)
+        # else:
+        #     retries_summary += 'No. of retries for xeth{} tcpdump is {} approx {} sec(initial verification)\n'.format(
+        #         eth, retries, retries*20)
 
-            if cmd_out:
-                if 'bootp/dhcp' not in cmd_out.lower():
-                    summary += 'On switch {} '.format(switch_name)
-                    summary += 'there are no dhcp packets and untagged packets '
-                    summary += 'captured in tcpdump for xeth{}\n'.format(eth)
-            else:
-                summary += 'On switch {} '.format(switch_name)
-                summary += 'failed to capture tcpdump output\n'
-            if not summary:
-                found = True
-                summary = 'On switch {} No of retries {} for xeth{} tcpdump'.format(switch_name, retries, eth)
-            else:
-                retries += 1
-        if not found:
-            RESULT_STATUS = False
-            failure_summary += summary
-            retries_summary += 'No. of retries for xeth{} tcpdump is {} approx {} sec(initial verification)\n'.format(
-                eth, retries, retries*20)
-        else:
-            retries_summary += 'No. of retries for xeth{} tcpdump is {} approx {} sec(initial verification)\n'.format(
-                eth, retries, retries*20)
 
-
-    else:
+    # else:
         execute_commands(module, 'dhclient xeth{}'.format(eth))
 
         retries = 1
@@ -235,39 +235,39 @@ def verify_vlan_configurations(module):
 
     # Run dhclient on spine switch and perform tcpdump on leaf switch to check
     # if dhcp request/reply packets can be seen along with tagged packets.
-    if switch_name == leaf_switch:
-        retries = 1
-        found = False
-        while retries != 3 and not found:
-            # Retries for 40 sec (max)
-            summary = ''
-            cmd = 'timeout 25 tcpdump -c 25 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
-            cmd_out = execute_commands(module, cmd)
-            if cmd_out:
-                cmd_out = cmd_out.lower()
-                if ('802.1q (0x8100)' not in cmd_out or
-                        'vlan {}'.format(eth) not in cmd_out):
-                    summary += 'On switch {} '.format(switch_name)
-                    summary += 'there are no dhcp packets and tagged packets '
-                    summary += 'captured in tcpdump for xeth{}\n'.format(eth)
-            else:
-                summary += 'On switch {} '.format(switch_name)
-                summary += 'failed to capture tcpdump output\n'
-            if not summary:
-                found = True
-                summary = 'On switch {} No of retries {} for xeth{} tcpdump'.format(switch_name, retries, eth)
-            else:
-                retries += 1
-        if not found:
-            RESULT_STATUS = False
-            failure_summary += summary
-            retries_summary += 'No. of retries for xeth{} tcpdump is {} approx {} sec(after running dhclient for vlan interface)\n'.format(
-                eth, retries, retries*20)
-        else:
-            retries_summary += 'No. of retries for xeth{} tcpdump is {} approx {} sec(after running dhclient for vlan interface)\n'.format(
-                eth, retries, retries*20)
+    if switch_name != leaf_switch:
+        # retries = 1
+        # found = False
+        # while retries != 3 and not found:
+        #     # Retries for 40 sec (max)
+        #     summary = ''
+        #     cmd = 'timeout 25 tcpdump -c 25 -G 10 -net -i xeth{} not arp and not icmp'.format(eth)
+        #     cmd_out = execute_commands(module, cmd)
+        #     if cmd_out:
+        #         cmd_out = cmd_out.lower()
+        #         if ('802.1q (0x8100)' not in cmd_out or
+        #                 'vlan {}'.format(eth) not in cmd_out):
+        #             summary += 'On switch {} '.format(switch_name)
+        #             summary += 'there are no dhcp packets and tagged packets '
+        #             summary += 'captured in tcpdump for xeth{}\n'.format(eth)
+        #     else:
+        #         summary += 'On switch {} '.format(switch_name)
+        #         summary += 'failed to capture tcpdump output\n'
+        #     if not summary:
+        #         found = True
+        #         summary = 'On switch {} No of retries {} for xeth{} tcpdump'.format(switch_name, retries, eth)
+        #     else:
+        #         retries += 1
+        # if not found:
+        #     RESULT_STATUS = False
+        #     failure_summary += summary
+        #     retries_summary += 'No. of retries for xeth{} tcpdump is {} approx {} sec(after running dhclient for vlan interface)\n'.format(
+        #         eth, retries, retries*20)
+        # else:
+        #     retries_summary += 'No. of retries for xeth{} tcpdump is {} approx {} sec(after running dhclient for vlan interface)\n'.format(
+        #         eth, retries, retries*20)
 
-    else:
+    # else:
         execute_commands(module, 'dhclient xeth{}.1'.format(eth))
         retries = 1
         found = False
