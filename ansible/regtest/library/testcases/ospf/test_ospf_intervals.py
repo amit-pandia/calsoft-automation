@@ -152,8 +152,10 @@ def verify_ospf_intervals(module):
     spine_list = module.params['spine_list']
     leaf_list = module.params['leaf_list']
 
-    alist = leaf_list + spine_list
-    alist.remove(switch_name)
+    alist = None
+    if leaf_list and spine_list:
+        alist = leaf_list + spine_list
+        alist.remove(switch_name)
 
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
