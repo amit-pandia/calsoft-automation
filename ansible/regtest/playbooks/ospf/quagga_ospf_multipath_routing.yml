@@ -145,7 +145,7 @@
 
     - name: Wait few secs
       pause:
-        seconds: 20
+        seconds: 60
 
     - name: Verify ospf configuration
       test_ospf_multipath:
