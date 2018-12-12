@@ -15,7 +15,7 @@
         state: absent
 
 
-- hosts: leaf[0]
+- hosts: leaf:spine
   become: true
   tasks:
     - name: Delete dummy interface

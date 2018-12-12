@@ -23,7 +23,7 @@
         start_time: "{{ start_time.stdout }}"
 
 
-- hosts: leaf[0]
+- hosts: leaf:spine
   become: true
   tasks:
     - name: Add dummy interface
@@ -86,6 +86,40 @@
       test_bgp_convergence:
         switch_name: "{{ inventory_hostname }}"
         converge_switch: "{{ groups['leaf'][0] }}"
+        converge_switch_config: 'absent'
+        package_name: "quagga"
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        log_dir_path: "{{ bgp_log_dir }}"
+      register: module_out
+
+- hosts: leaf[0]
+  become: true
+  tasks:
+    - name: Add again network config in /etc/quagga/bgpd.conf
+      lineinfile:
+        path: "{{ quagga_bgp_conf_file }}"
+        line: "network 192.168.{{ inventory_hostname[-2::] }}.1/32"
+
+    - name: Restart quagga
+      service:
+        name: quagga
+        state: restarted
+
+    - name: Wait few seconds for route to become reachable
+      pause:
+        seconds: 35
+
+- hosts: leaf:spine
+  become: true
+  tasks:
+    - name: Verify bgp quagga convergence
+      test_bgp_convergence:
+        switch_name: "{{ inventory_hostname }}"
+        converge_switch: "{{ groups['leaf'][0] }}"
+        converge_switch_config: 'present'
+        spine_list: "{{ groups['spine'] }}"
+        is_ping: True
+        leaf_list: "{{ groups['leaf'] }}"
         package_name: "quagga"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ bgp_log_dir }}"

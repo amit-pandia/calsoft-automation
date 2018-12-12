@@ -132,7 +132,7 @@ def verify_bgp_quagga_convergence(module):
     switch_name = module.params['switch_name']
     package_name = module.params['package_name']
     converge_switch = module.params['converge_switch']
-
+    converge_switch_config = module.params['converge_switch_config']
     spine_list = module.params['spine_list']
     leaf_list = module.params['leaf_list']
     is_ping = module.params['is_ping']
@@ -143,9 +143,7 @@ def verify_bgp_quagga_convergence(module):
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
 
-    # Restart and check package status
-    execute_commands(module, 'service {} restart'.format(package_name))
-    time.sleep(55)
+    # Check package status
     execute_commands(module, 'service {} status'.format(package_name))
 
     if switch_name != converge_switch:
@@ -156,33 +154,38 @@ def verify_bgp_quagga_convergence(module):
         if routes_out:
             route = 'B>* 192.168.{}.1'.format(converge_switch[-2::])
 
-            if route in routes_out:
+            if route in routes_out and converge_switch_config == 'absent':
                 RESULT_STATUS = False
                 failure_summary += 'On Switch {} bgp route '.format(switch_name)
                 failure_summary += 'for network {} is present '.format(route)
                 failure_summary += 'in the output of command {} '.format(cmd)
                 failure_summary += 'even after removing this network\n'
+
+            elif route not in routes_out and converge_switch_config == 'present':
+		RESULT_STATUS = False
+		failure_summary += 'On Switch {} bgp route '.format(switch_name)
+                failure_summary += 'for network {} is absent '.format(route)
+                failure_summary += 'in the output of command {} '.format(cmd)
+                failure_summary += 'even after presence of this network\n'	
+
         else:
             RESULT_STATUS = False
             failure_summary += 'On switch {} '.format(switch_name)
             failure_summary += 'bgp convergence cannot be verified '
             failure_summary += 'because output of command {} is None'.format(cmd)
 
-    if is_ping:
-        packet_count = 5
-        p_list = leaf_list1 + spine_list1
-	p_list.remove(switch_name)
-        for val in p_list:
-                cmd = "ping -c {} -I 192.168.{}.1 192.168.{}.1".format(packet_count, switch_name[-2:], val[-2:])
+        if is_ping and converge_switch_config == 'present':
+		packet_count = 5
+		cmd = "ping -c {} -I 192.168.{}.1 192.168.{}.1".format(packet_count, switch_name[-2:], converge_switch[-2:])
 
-                ping_out = execute_commands(module, cmd)
+		ping_out = execute_commands(module, cmd)
 
-                if '100% packet loss' in ping_out:
-                    RESULT_STATUS = False
-                    failure_summary += 'Ping from switch {} to {}'.format(switch_name, val)
-                    failure_summary += ' for {} packets'.format(packet_count)
-                    failure_summary += ' are not received in the output of '
-                    failure_summary += 'command {}\n'.format(cmd)
+		if '100% packet loss' in ping_out:
+		    RESULT_STATUS = False
+		    failure_summary += 'Ping from switch {} to {}'.format(switch_name, converge_switch)
+		    failure_summary += ' for {} packets'.format(packet_count)
+		    failure_summary += ' are not received in the output of '
+		    failure_summary += 'command {}\n'.format(cmd)
 
 
     HASH_DICT['result.detail'] = failure_summary
@@ -200,6 +203,7 @@ def main():
             leaf_list=dict(required=False, type='list', default=[]),
             is_ping=dict(required=False, type='bool'),
             converge_switch=dict(required=False, type='str'),
+            converge_switch_config=dict(required=False, type='str'),
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
