@@ -17,6 +17,8 @@ upgrade_log_dir: /var/log/regression/upgrade
 boot_log_dir: /var/log/regression/boot
 docker_log_dir: /var/log/regression/docker
 issues_log_dir: /var/log/regression/issues
+snmp_log_dir: /var/log/regression/snmp
+snmptrapd_log_dir: /var/log/regression/snmptrapd
 
 bgp_loop_prevention_log_file: /var/log/regression/bgp_loop_prevention.log
 gobgp_loop_prevention_log_file: /var/log/gobgpd.dump
@@ -48,6 +50,14 @@ bird_conf_file_bck: /etc/bird/bird.conf.bck
 
 network_interfaces_file: /etc/network/interfaces
 network_interfaces_file_bck: /etc/network/interfaces.bck
+
+snmpd_conf_file: /etc/snmp/snmpd.conf
+snmp_conf_file: /etc/snmp/snmp.conf
+snmpd_conf_file_bck: /etc/snmp/snmpd.conf.bck
+snmp_conf_file_bck: /etc/snmp/snmp.conf.bck
+snmp_if_mib_file: /usr/share/snmp/mibs/
+snmptrapd_conf_file: /etc/snmp/snmptrapd.conf
+snmptrapd_file: /etc/default/snmptrapd
 
 xeth_config_file: /etc/lldpd.d/xeth.conf
 xeth_config_file_bck: /etc/lldpd.d/xeth_conf.bck

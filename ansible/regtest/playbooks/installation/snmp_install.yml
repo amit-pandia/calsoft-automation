@@ -20,5 +20,8 @@
       pause:
         seconds: 35
 
-
+    - name: Remove .deb from remote machine
+      file:
+        path: /tmp/snmp-mibs-downloader_1.1+nmu1_all.deb
+        state: absent
 
