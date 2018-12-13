@@ -11,6 +11,8 @@
         var: kernel_version.stdout_lines
 
 
+- include: ../installation/snmp_install.yml
+
 - hosts: server_emulator
   become: true
 
