@@ -1,0 +1,37 @@
+---
+
+- hosts: leaf:spine
+  become: true
+  ignore_errors: yes
+  tasks:
+    - name: Copy bmc_upgrade script
+      template:
+        src: ../../templates/bmc_upgrade.sh
+        dest: "/tmp/bmc_upgrade_{{ inventory_hostname }}.sh"
+        mode: 0755
+      delegate_to: 127.0.0.1
+
+    - name: Run bmc_upgrade script
+      shell: "./bmc_upgrade_{{ inventory_hostname }}.sh"
+      args:
+        chdir: /tmp/
+      register: upgrade
+      delegate_to: 127.0.0.1
+
+#    - debug:
+#        var: upgrade.stdout_lines
+
+    - name: Remove bmc_upgrade script
+      file:
+        path: "/tmp/bmc_upgrade_{{ inventory_hostname }}.sh"
+        state: absent
+      delegate_to: 127.0.0.1
+
+    - debug:
+        msg: "Latest version already installed"
+      when: upgrade.stdout.find('not newer') != -1
+
+    - debug:
+        msg: "BMC successfully Upgraded"
+      when: upgrade.stdout.find('Starting kernel') != -1
+
