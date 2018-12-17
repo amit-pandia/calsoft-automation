@@ -51,6 +51,10 @@
 # Run goes boot playbook
 - include: playbooks/upgrade/goes_boot.yml
 
+# Run BMC upgrade playbook
+- include: playbooks/upgrade/bmc_upgrade.yml
+
+
 - hosts: server_emulator
   become: true
   tasks:

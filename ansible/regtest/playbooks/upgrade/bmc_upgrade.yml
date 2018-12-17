@@ -4,6 +4,17 @@
   become: true
   ignore_errors: yes
   tasks:
+    - shell: dpkg --list | grep kernel
+      register: kernel_version
+
+    - debug:
+        var: kernel_version.stdout_lines
+
+
+- hosts: leaf:spine
+  become: true
+  ignore_errors: yes
+  tasks:
     - name: Copy bmc_upgrade script
       template:
         src: ../../templates/bmc_upgrade.sh
@@ -28,10 +39,27 @@
       delegate_to: 127.0.0.1
 
     - debug:
-        msg: "Latest version already installed"
+        msg: "BMC latest version already installed"
       when: upgrade.stdout.find('not newer') != -1
 
     - debug:
         msg: "BMC successfully Upgraded"
       when: upgrade.stdout.find('Starting kernel') != -1
 
+    - lineinfile:
+        path: "{{ regression_summary_report }}"
+        line: "BMC Upgrade: BMC latest version already installed"
+      delegate_to: 127.0.0.1
+      when: upgrade.stdout.find('not newer') != -1
+
+    - lineinfile:
+        path: "{{ regression_summary_report }}"
+        line: "BMC Upgrade: BMC successfully Upgraded"
+      delegate_to: 127.0.0.1
+      when: upgrade.stdout.find('Starting kernel') != -1
+
+
+- hosts: leaf:spine
+  become: true
+  tasks:
+    - include: ../../playbooks/get_goes_status.yml
