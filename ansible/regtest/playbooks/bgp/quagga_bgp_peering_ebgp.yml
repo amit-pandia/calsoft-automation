@@ -115,7 +115,9 @@
 
 
 - include: quagga_bgp_peering_ebgp_reset.yml
-  when: reset_config and not dry_run
+  when:
+    - reset_config
+    - not dry_run
 
 
 - hosts: server_emulator
