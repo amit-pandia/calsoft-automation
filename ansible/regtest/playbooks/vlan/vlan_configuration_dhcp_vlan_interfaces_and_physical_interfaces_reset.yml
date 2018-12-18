@@ -1,6 +1,5 @@
 ---
 
-
 - hosts: leaf[0]
   become: true
   ignore_errors: yes
@@ -9,6 +8,8 @@
       apt:
         name: isc-dhcp-server
         state: absent
+        purge: yes
+        autoremove: yes
 
 
 - hosts: leaf:spine
@@ -23,6 +24,8 @@
     - name: Execute commands
       command: "{{ item }}"
       with_items:
+      - 'rmmod platina-mk1'
+      - 'modprobe platina-mk1 provision=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1'
       - 'ifdown -a --allow vnet'
       - 'ifup -a --allow vnet'
       - 'goes restart'
