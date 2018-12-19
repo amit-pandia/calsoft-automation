@@ -38,6 +38,8 @@ send "\r"
 
 expect ">"
 
+sleep 5
+
 send "toggle\r"
 send "\r"
 

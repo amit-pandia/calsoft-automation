@@ -29,8 +29,8 @@
       register: upgrade
       delegate_to: 127.0.0.1
 
-#    - debug:
-#        var: upgrade.stdout_lines
+    - debug:
+        var: upgrade.stdout_lines
 
     - name: Remove bmc_upgrade script
       file:
