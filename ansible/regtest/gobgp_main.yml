@@ -29,9 +29,9 @@
 
 - include: playbooks/bgp/gobgp_bgp_peering_authentication.yml
 
-- include: playbooks/bgp/gobgp_bgp_peering_local_preference.yml
+#- include: playbooks/bgp/gobgp_bgp_peering_local_preference.yml
 
-- include: playbooks/bgp/gobgp_bgp_peering_as_path.yml
+#- include: playbooks/bgp/gobgp_bgp_peering_as_path.yml
 
 - include: playbooks/bgp/gobgp_bgp_peering_route_reflector.yml
 
