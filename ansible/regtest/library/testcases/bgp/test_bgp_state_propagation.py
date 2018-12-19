@@ -248,9 +248,9 @@ def verify_quagga_bgp_state_propagation(module):
 
     # Sync the invaders
     if switch_name == propagate_switch:
-        time.sleep(200)
+        time.sleep(211)
     else:
-        time.sleep(200-(retries*10))
+        time.sleep(211-(retries*10))
 
     # Bring up interfaces on propagate switch
     if switch_name == propagate_switch:
