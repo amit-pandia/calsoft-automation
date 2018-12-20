@@ -265,7 +265,7 @@ def verify_bird_peering_if_down(module):
     execute_commands(module, 'cat /etc/bird/bird.conf')
 
     # Restart and check package status
-    execute_commands(module, 'service {} restart'.format(package_name))
+    # execute_commands(module, 'service {} restart'.format(package_name))
     execute_commands(module, 'service {} status'.format(package_name))
 
     for line in config_file:
