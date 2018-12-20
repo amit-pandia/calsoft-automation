@@ -19,7 +19,7 @@
 #
 
 import shlex
-
+import time
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -139,6 +139,7 @@ def main():
     # Restart goes for given number of times and check it's status
     for i in range(0, module.params['restart_count']):
         execute_commands(module, 'goes restart')
+        time.sleep(10)
         goes_status = execute_commands(module, 'goes status')
         goes_status = goes_status.lower()
         if ('not ok' in goes_status or 'check daemons' not in goes_status or

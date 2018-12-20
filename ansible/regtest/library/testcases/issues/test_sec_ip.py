@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" Verify Fib Routes """
+""" Test Secondary IP """
 
 #
 # This file is part of Ansible
@@ -19,29 +19,29 @@
 #
 
 import shlex
-import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: verify_fib_routes
+module: test_sec_ip
 author: Platina Systems
-short_description: Module to verify fib routes
+short_description: Module to assign secondary IP to a interface.
 description:
-    Module to verify if given number of routes are available on the fib table.
+    Module to assign secondary IP and check FIB entries.
 options:
     switch_name:
       description:
-        - Name of the switch on which goes health will be checked.
+        - Name of the switch on which tests will be performed.
       required: False
       type: str
-    routes_count:
+    eth:
       description:
-        - Number of routes statically added.
+        - Name of the interface which is to be moved inside the container.
       required: False
-      type: int
+      type: str
     hash_name:
       description:
         - Name of the hash in which to store the result in redis.
@@ -55,27 +55,18 @@ options:
 """
 
 EXAMPLES = """
-- name: Verify if routes are available on fib table
-  verify_fib_routes:
+- name: Move interface and verify FIB entries
+  test_sec_ip:
     switch_name: "{{ inventory_hostname }}"
-    routes_count: 1550
     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-    log_dir_path: "{{ log_dir_path }}"
+    log_dir_path: "{{ issue_dir_path }}"
 """
 
 RETURN = """
-changed:
-  description: Boolean flag to indicate if any changes were made by this module.
-  returned: always
-  type: bool
 hash_dict:
   description: Dictionary containing key value pairs to store in hash.
   returned: always
   type: dict
-log_file_path:
-  description: Path to the log file on this switch.
-  returned: always
-  type: str
 """
 
 RESULT_STATUS = True
@@ -125,43 +116,89 @@ def execute_commands(module, cmd):
     return out
 
 
+def verify_fib(module):
+    """
+    Method to bring up and bring down docker containers.
+    :param module: The Ansible module to fetch input parameters.
+    """
+    global RESULT_STATUS, HASH_DICT
+    failure_summary = ''
+    switch_name = module.params['switch_name']
+    eth = module.params['eth']
+
+    cmd = 'ifconfig xeth{}'.format(eth)
+    out = execute_commands(module, cmd).splitlines()
+
+    # Assign secondary IP to interface
+    ip2 = '192.168.1.{}'.format(eth)
+    cmd = 'ifconfig xeth{}:0 {} netmask 255.255.255.0 up'.format(eth, ip2)
+    execute_commands(module, cmd)
+
+    cmd = 'ip add sh xeth{}'.format(eth)
+    out = execute_commands(module, cmd)
+    if ip2 not in out:
+        RESULT_STATUS = False
+        failure_summary += 'On switch {} '.format(switch_name)
+        failure_summary += 'both the IPs are not showing up\n'
+
+    cmd = 'goes vnet show ip fib'
+    out = execute_commands(module, cmd)
+    if ip2 not in out:
+        RESULT_STATUS = False
+        failure_summary += 'On switch {} '.format(switch_name)
+        failure_summary += 'FIB entry for both the IPs are not showing up '
+        failure_summary += 'before moving interface to name space.\n'
+
+    # Moving interface to name space
+    cmd = 'ip netns add red'
+    execute_commands(module, cmd)
+    cmd = 'ip link set xeth{} netns red'.format(eth)
+    execute_commands(module, cmd)
+    cmd = 'ip netns set red 20'
+    execute_commands(module, cmd)
+    cmd = 'ip netns exec red ip add sh'
+    execute_commands(module, cmd)
+    cmd = 'ip netns exec red ip link set up xeth{}'.format(eth)
+    execute_commands(module, cmd)
+    cmd = 'goes vnet show ip fib'
+    out = execute_commands(module, cmd)
+    if 'xeth{}'.format(eth) in out:
+        RESULT_STATUS = False
+        failure_summary += 'On switch {} '.format(switch_name)
+        failure_summary += 'FIB entry for both the IPs are showing up '
+        failure_summary += 'even after moving interface to name space.\n'
+
+    cmd = 'ip netns del red'
+    execute_commands(module, cmd)
+
+    HASH_DICT['result.detail'] = failure_summary
+
+    # Get the GOES status info
+    execute_commands(module, 'goes restart')
+    execute_commands(module, 'goes status')
+
+
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
-            routes_count=dict(required=False, type='int'),
+            eth=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
-    failure_summary = ''
-    switch_name = module.params['switch_name']
 
-    # Get all ip routes
-    ip_routes = execute_commands(module, 'ip route show')
-    ip_routes = ip_routes.splitlines()
-
-    # Get all routes from fib table
-    fib_routes = execute_commands(module, 'goes vnet show ip fib')
-    fib_routes = fib_routes.splitlines()
-
-    # Verify if there are at least given number of routes available
-    if len(ip_routes) < 1500 or len(fib_routes) < 1500:
-        RESULT_STATUS = False
-        failure_summary += 'On switch {} '.format(switch_name)
-        failure_summary += 'there are less than 1550 routes available'
-        failure_summary += ' {}ip routes and {}fib routes\n'.format(len(ip_routes), len(fib_routes))
+    verify_fib(module)
 
     # Calculate the entire test result
     HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
-    HASH_DICT['result.detail'] = failure_summary
 
     # Create a log file
     log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
+    log_file_path += '/{}_'.format(module.params['hash_name']) + '.log'
     log_file = open(log_file_path, 'w')
     for key, value in HASH_DICT.iteritems():
         log_file.write(key)
@@ -175,10 +212,10 @@ def main():
     # Exit the module and return the required JSON.
     module.exit_json(
         hash_dict=HASH_DICT,
-        log_file_path=log_file_path,
-        changed=False
+        log_file_path=log_file_path
     )
 
 if __name__ == '__main__':
     main()
+
 

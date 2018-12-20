@@ -19,35 +19,61 @@
       register: start_time
 
     - set_fact:
-        hash_name: "issue_6_panic_after_sh_ip_fib_{{ start_time.stdout }}"
+        hash_name: "issue_56_vnet_show_ip_fib_summary_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
 
 
-- hosts: leaf[0]
+- hosts: spine[1]
   become: true
+
+  vars:
+    - containers:
+        container1: 'issue56_1'
+        container2: 'issue56_2'
+
   tasks:
     - file:
         path: "{{ issues_log_dir }}"
         state: directory
 
-    - name: Take backup of /etc/network/interfaces file
+    - file:
+        path: "~/volumes/quagga/{{ item }}"
+        state: directory
+      with_items:
+      - "{{ containers.container1 }}"
+      - "{{ containers.container2 }}"
+
+    - name: Pull quagga container image from dockerhub
+      command: "docker pull stigt/debian-quagga:latest"
+
+    - name: Install docker compose
+      shell: "curl -L https://github.com/docker/compose/releases/download/1.17.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose"
+
+    - name: Make docker-compose file executable
+      shell: "chmod +x /usr/local/bin/docker-compose"
+
+    - name: Add docker_move.sh
       copy:
-        src: "{{ network_interfaces_file }}"
-        dest: "{{ network_interfaces_file_bck }}"
-        remote_src: true
+        src: ../../templates/docker_move.sh
+        dest: "~/docker_move.sh"
+        owner: root
+        group: root
+        mode: 0755
 
-    - name: Copy static 1550 routes network interfaces file
-      copy:
-        src: "../../files/{{inventory_hostname}}/routenewadd.sh"
-        dest: /tmp/
+    - name: Run docker-compose up
+      shell: "docker run --rm --privileged=true -P --hostname={{ item }} --name={{ item }} -d -v $(pwd)/volumes/quagga/{{ item }}:/etc/quagga stigt/debian-quagga:latest"
+      args:
+        chdir: ~/
+      with_items:
+      - "{{ containers.container1 }}"
+      - "{{ containers.container2 }}"
 
-    - command: chmod +x /tmp/routenewadd.sh
-    - command: bash /tmp/routenewadd.sh
-
-    - name: Restart goes and check its status
-      restart_and_check_goes_status:
+    - name: Move interface and verify FIB entries
+      test_updown_fib:
         switch_name: "{{ inventory_hostname }}"
-        restart_count: 1
+        container_name: "{{ containers.container1 }}"
+        eth: '5'
+        frequency: 1
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ issues_log_dir }}"
       register: module_out
@@ -69,10 +95,12 @@
         log_content: "{{ logs['content'] | b64decode }}"
       delegate_to: 127.0.0.1
 
-    - name: Verify if 1550 routes are available on fib table and in ip route show
-      verify_fib_routes:
+    - name: Move interface and verify FIB entries
+      test_updown_fib:
         switch_name: "{{ inventory_hostname }}"
-        routes_count: 1550
+        container_name: "{{ containers.container2 }}"
+        eth: '7'
+        frequency: 1
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ issues_log_dir }}"
       register: module_out
@@ -94,21 +122,26 @@
         log_content: "{{ logs['content'] | b64decode }}"
       delegate_to: 127.0.0.1
 
-    - include: ../../playbooks/get_goes_version_and_tags.yml
+    - name: Run docker-compose down
+      shell: "docker stop {{ item }}"
+      args:
+        chdir: ~/
+      with_items:
+      - "{{ containers.container1 }}"
+      - "{{ containers.container2 }}"
 
-    - name: Restore backup of /etc/network/interfaces
-      copy:
-        src: "{{ network_interfaces_file_bck }}"
-        dest: "{{ network_interfaces_file }}"
-        remote_src: true
-
-    - name: Remove backup file
+    - name: Remove docker-compose files
       file:
-        path: "{{ network_interfaces_file_bck }}"
+        path: "~/docker_move.sh"
         state: absent
 
     - name: Restart goes
       command: "goes restart"
+
+    - pause:
+        seconds: 10
+       
+    - include: ../../playbooks/get_goes_version_and_tags.yml
 
 
 - hosts: server_emulator
@@ -130,3 +163,9 @@
     - lineinfile:
         path: "{{ regression_summary_report }}"
         line: "{{ hash_name }}: {{ result.result_status }}"
+
+
+- hosts: leaf:spine
+  become: true
+  tasks:
+    - include: ../../playbooks/get_goes_status.yml start_time={{ hostvars['server_emulator']['start_time'] }} hash_name={{ hostvars['server_emulator']['hash_name'] }}

@@ -11,8 +11,6 @@
         var: kernel_version.stdout_lines
 
 
-- include: ../installation/snmp_install.yml
-
 - hosts: server_emulator
   become: true
 
@@ -21,55 +19,26 @@
       register: start_time
 
     - set_fact:
-        hash_name: "SNMP_polling_v2_community_{{ start_time.stdout }}"
+        hash_name: "issue_44_vnet_crashes_when_adding_7th_path_to_ECMP_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
-    
 
-- hosts: leaf[0]
+
+- hosts: spine[1]
   become: true
+
   tasks:
     - file:
-        path: "{{ snmp_log_dir }}"
+        path: "{{ issues_log_dir }}"
         state: directory
 
-    - name: Copy snmpd.conf to remote nachine
-      copy:
-        src: "../../files/{{ inventory_hostname }}/snmpd.conf"
-        dest: "{{ snmpd_conf_file }}"
-
-    - name: Copy snmp.conf to the remote machine
-      copy:
-        src: "../../files/{{ inventory_hostname }}/snmp.conf"
-        dest: "{{ snmp_conf_file }}"
-
-
-- hosts: leaf[0]:spine[0]
-  become: true
-  tasks:
-    - name: Copy if.mib file to remote machine
-      copy:
-        src: "../../files/if.mib"
-        dest: "{{ snmp_if_mib_file }}" 
-  
-    - name: Restart snmpd
-      command: "service snmpd restart"
-
-    - name: Wait for some time to restart snmpd
-      pause:
-        seconds: 35
-
-
-- hosts: leaf[0]
-  become: true
-
-  tasks:
-    - name: Verify SNMP polling
-      test_snmp_polling:
-        spine_name: "{{ groups['spine'][0] }}"
-        package_name: "snmp"
-        switch_name: '{{ inventory_hostname }}'
+    - name: Verify that vnetd should not crash when adding 7th ECMP route
+      test_ecmp_route:
+        switch_name: "{{ inventory_hostname }}"
+        start_time: "{{ hostvars['server_emulator']['start_time'] }}"
+        log_file_names: "/var/log/syslog"
+        error_msg: "panic"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        log_dir_path: "{{ snmp_log_dir }}"
+        log_dir_path: "{{ issues_log_dir }}"
       register: module_out
 
     - command: "date +%Y%m%d%T"
@@ -88,6 +57,12 @@
         hash_dict: "{{ module_out.hash_dict }}"
         log_content: "{{ logs['content'] | b64decode }}"
       delegate_to: 127.0.0.1
+
+    - name: Restart goes
+      command: "goes restart"
+
+    - pause:
+        seconds: 10
 
     - include: ../../playbooks/get_goes_version_and_tags.yml
 
@@ -111,6 +86,7 @@
     - lineinfile:
         path: "{{ regression_summary_report }}"
         line: "{{ hash_name }}: {{ result.result_status }}"
+
 
 - hosts: leaf:spine
   become: true

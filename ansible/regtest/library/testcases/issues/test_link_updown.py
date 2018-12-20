@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" Verify Ports """
+""" Verify vnetd daemon """
 
 #
 # This file is part of Ansible
@@ -20,23 +20,46 @@
 
 import shlex
 import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: verify_ports
+module: test_link_updown
 author: Platina Systems
-short_description: Module to verify interface port link status.
+short_description: Module to test vnetd daemon is up.
 description:
-    Module to change the speed to auto and verify link status after goes restart
+    Module to test vnetd daemon is up.
 options:
     switch_name:
       description:
-        - Name of the switch on which goes health will be checked.
+        - Name of the switch on which tests will be performed.
       required: False
       type: str
+    eth:
+      description:
+        - Name of the interface which is to be moved inside the container.
+      required: False
+      type: str
+    frequency:
+      description:
+        - The no of times the interface is to be moved into a namespace.
+      required: False
+      type: str
+    spine_list:
+      description:
+        - List of all spine switches.
+      required: False
+      type: list
+      default: []
+    leaf_list:
+      description:
+        - List of all leaf switches.
+      required: False
+      type: list
+      default: []
     hash_name:
       description:
         - Name of the hash in which to store the result in redis.
@@ -47,35 +70,21 @@ options:
         - Path to log directory where logs will be stored.
       required: False
       type: str
-    platina_redis_channel:
-      description:
-        - Name of the platina redis channel.
-      required: False
-      type: str
 """
 
 EXAMPLES = """
-- name: Verify port link status
-  verify_ports:
+- name: Execute and verify port links
+  test_link_updown:
     switch_name: "{{ inventory_hostname }}"
-    platina_redis_channel: "platina-mk1"
     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-    log_dir_path: "{{ log_dir_path }}"
+    log_dir_path: "{{ issues_log_dir }}"
 """
 
 RETURN = """
-changed:
-  description: Boolean flag to indicate if any changes were made by this module.
-  returned: always
-  type: bool
 hash_dict:
   description: Dictionary containing key value pairs to store in hash.
   returned: always
   type: dict
-log_file_path:
-  description: Path to the log file on this switch.
-  returned: always
-  type: str
 """
 
 RESULT_STATUS = True
@@ -125,40 +134,91 @@ def execute_commands(module, cmd):
     return out
 
 
-def change_speed_and_verify_links(module, speed):
+def verify_goes_status(module):
     """
-    Method to change interface speed and check link status
+    Method to restart goes frequent times on invader.
     :param module: The Ansible module to fetch input parameters.
-    :param speed: Interface speed.
     """
-    global HASH_DICT, RESULT_STATUS
+    global RESULT_STATUS
     failure_summary = ''
+
     switch_name = module.params['switch_name']
-    platina_redis_channel = module.params['platina_redis_channel']
-    eth_list = [1, 5, 9, 13, 17, 21, 25, 29]
 
-    # Bring down interface and update the speed to auto
-    for eth in eth_list:
-        eth = 'xeth{}'.format(eth)
-        execute_commands(module, 'ifdown {}'.format(eth))
-        execute_commands(module, 'goes hset {} vnet.{}.speed {}'.format(
-            platina_redis_channel, eth, speed))
-        execute_commands(module, 'ifup {}'.format(eth))
-
-    # Restart goes
-    execute_commands(module, 'goes restart')
-    time.sleep(10)
-    # Check the port link status, it should be true
-    for eth in eth_list:
-        eth = 'xeth{}'.format(eth)
-        cmd = 'goes hget {} vnet.{}.link'.format(platina_redis_channel, eth)
-        link_out = execute_commands(module, cmd)
-        if 'true' not in link_out:
+    # Get the GOES status info
+    status = execute_commands(module, 'goes status').splitlines()
+    for line in status:
+        if 'Not OK' in line:
             RESULT_STATUS = False
             failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'port link is not up '
-            failure_summary += 'for the interface {} '.format(eth)
-            failure_summary += 'when speed is set to {}\n'.format(speed)
+            failure_summary += 'GOES status is Not OK.\n'
+            failure_summary += '{}\n'.format(line)
+
+    return failure_summary
+
+
+def move_interface(module):
+    """
+    Method to verify dumps in log files on invader.
+    :param module: The Ansible module to fetch input parameters.
+    """
+    global RESULT_STATUS
+    failure_summary = ''
+
+    switch_name = module.params['switch_name']
+    eth = module.params['eth']
+    spine_list = module.params['spine_list']
+    leaf_list = module.params['leaf_list']
+    frequency = module.params['frequency']
+
+    is_spine = True if switch_name in spine_list else False
+
+    intf1 = 2
+    intf2 = 3
+
+    if is_spine:
+        target = leaf_list[0][-2::]
+	clr = 'red'
+	anum = 16
+	a, b = intf2, intf1
+    else:
+        target = spine_list[0][-2::]
+	clr = 'blue'
+	anum = 15
+	a, b = intf1, intf2
+
+    cmd = 'ip netns add {}'.format(clr)
+    execute_commands(module, cmd)
+    cmd = 'ip link set xeth{} netns {}'.format(eth, clr)
+    execute_commands(module, cmd)
+    cmd = 'ip netns set {} {}'.format(clr, anum)
+    execute_commands(module, cmd)
+
+    status = True
+
+    if switch_name:
+        cmd = 'ip netns exec {} ip link set up xeth{}'.format(clr, eth)
+        execute_commands(module, cmd)
+        cmd = 'ip netns exec {} ip add add 10.1.0.{} peer 10.1.0.{}/31 dev xeth{}'.format(clr, a, b, eth)
+        execute_commands(module, cmd)
+	if is_spine:
+		cmd = 'ip netns exec {} ping -c 100 10.1.0.{}'.format(clr, b)
+		ping = execute_commands(module, cmd)
+		if '0% packet loss' in ping:
+		    RESULT_STATUS = False
+		    failure_summary += 'On switch {} '.format(switch_name)
+		    failure_summary += 'ping replies are coming even after setting down '
+		    failure_summary += 'the interface on destination switch.\n'
+		elif '100% packet loss' in ping:
+		    failure_summary += 'From switch {} '.format(switch_name)
+		    failure_summary += 'the interface on destination switch is not pingable.\n'
+
+
+    failure_summary += verify_goes_status(module)
+    cmd = 'ip netns del {}'.format(switch_name)
+    execute_commands(module, cmd)
+    cmd = 'goes restart'
+    execute_commands(module, cmd)
+    failure_summary += verify_goes_status(module)
 
     HASH_DICT['result.detail'] = failure_summary
 
@@ -168,23 +228,18 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
+            eth=dict(required=False, type='str'),
+            frequency=dict(required=False, type='int', default=1),
+            spine_list=dict(required=False, type='list', default=[]),
+            leaf_list=dict(required=False, type='list', default=[]),
             hash_name=dict(required=False, type='str'),
-            platina_redis_channel=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
         )
     )
 
-    global HASH_DICT, RESULT_STATUS
+    global RESULT_STATUS, HASH_DICT
 
-    for i in range(3):
-        # Change the interface speed to auto and check port link status
-        change_speed_and_verify_links(module, 'auto')
-
-        # Change the interface speed to 100g and check port link status
-        change_speed_and_verify_links(module, '100g')
-
-        # Change the interface speed to auto and check port link status
-        change_speed_and_verify_links(module, 'auto')
+    move_interface(module)
 
     # Calculate the entire test result
     HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
@@ -192,7 +247,7 @@ def main():
     # Create a log file
     log_file_path = module.params['log_dir_path']
     log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
+    log_file = open(log_file_path, 'a')
     for key, value in HASH_DICT.iteritems():
         log_file.write(key)
         log_file.write('\n')
@@ -205,10 +260,10 @@ def main():
     # Exit the module and return the required JSON.
     module.exit_json(
         hash_dict=HASH_DICT,
-        log_file_path=log_file_path,
-        changed=False
+        log_file_path=log_file_path
     )
 
 if __name__ == '__main__':
     main()
+
 

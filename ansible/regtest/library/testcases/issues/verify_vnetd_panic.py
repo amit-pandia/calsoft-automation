@@ -1,47 +1,42 @@
-#!/usr/bin/python
-""" Verify Fib Routes """
-
-#
-# This file is part of Ansible
-#
-# Ansible is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Ansible is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Ansible. If not, see <http://www.gnu.org/licenses/>.
-#
-
 import shlex
-import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: verify_fib_routes
+module: test_ospf_multipath_routing
 author: Platina Systems
-short_description: Module to verify fib routes
+short_description: Module to test and verify multipath routing using ospf.
 description:
-    Module to verify if given number of routes are available on the fib table.
+    Module to test and verify multipath routing using ospf and log the same.
 options:
     switch_name:
       description:
-        - Name of the switch on which goes health will be checked.
+        - Name of the switch on which tests will be performed.
       required: False
       type: str
-    routes_count:
+    config_file:
       description:
-        - Number of routes statically added.
+        - ospf config which have been added.
       required: False
-      type: int
+      type: str
+    package_name:
+      description:
+        - Name of the package installed (e.g. gobgpd).
+      required: False
+      type: str
+    leaf_list:
+      description:
+        - List of leaf invaders.
+      required: False
+      type: list
+    spine_list:
+      description:
+        - List of spine invaders.
+      required: False
+      type: list
     hash_name:
       description:
         - Name of the hash in which to store the result in redis.
@@ -55,32 +50,22 @@ options:
 """
 
 EXAMPLES = """
-- name: Verify if routes are available on fib table
-  verify_fib_routes:
+- name: Verify quagga bgp peering ebgp
+  test_ospf_multipath_routing:
     switch_name: "{{ inventory_hostname }}"
-    routes_count: 1550
     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
     log_dir_path: "{{ log_dir_path }}"
 """
 
 RETURN = """
-changed:
-  description: Boolean flag to indicate if any changes were made by this module.
-  returned: always
-  type: bool
 hash_dict:
   description: Dictionary containing key value pairs to store in hash.
   returned: always
   type: dict
-log_file_path:
-  description: Path to the log file on this switch.
-  returned: always
-  type: str
 """
 
 RESULT_STATUS = True
 HASH_DICT = OrderedDict()
-
 
 def run_cli(module, cli):
     """
@@ -110,19 +95,50 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    out = run_cli(module, cmd)
+    if 'service' in cmd and 'restart' in cmd:
+        out = None
+    else:
+        out = run_cli(module, cmd)
 
     # Store command prefixed with exec time as key and
     # command output as value in the hash dictionary
     exec_time = run_cli(module, 'date +%Y%m%d%T')
     key = '{0} {1} {2}'.format(module.params['switch_name'], exec_time, cmd)
-
-    if out:
-        HASH_DICT[key] = out[:512] if len(out.encode('utf-8')) > 512 else out
-    else:
-        HASH_DICT[key] = out
+    HASH_DICT[key] = out
 
     return out
+
+def vnetd_panic(module):
+
+	xeth = module.params['xeth']
+
+	global RESULT_STATUS, HASH_DICT
+	failure_summary = ''
+	execute_commands(module, "ip add sh xeth{}".format(xeth))
+	
+	out = execute_commands(module, "ping 10.0.{}.30".format(xeth))
+	if "100% packet loss" in out:
+		RESULT_STATUS = False
+		failure_summary += "100% packet loss occured during ping from {} ".format(module.params['switch_name'])
+		failure_summary += "for command {}\n".format("ping 10.0.{}.30".format(xeth))
+
+	out = execute_commands(module, "sudo ip link del xeth{}".format(xeth))
+	if "Operation not supported" not in out:
+		RESULT_STATUS = False
+		failure_summary += "Operation not supported is not present in the "
+		failure_summary += "output of coommand {}\n".format("sudo ip link del xeth{}".format(xeth))
+
+	# Check goes status
+	execute_commands(module, "goes status")
+
+	cmd = "ip link show xeth{}".format(xeth)
+        out = execute_commands(module, cmd)
+	if "xeth{}@".format(xeth) not in out:
+		RESULT_STATUS = False
+                failure_summary += "Operation not supported is not present in the "
+                failure_summary += "output of coommand {}\n".format("sudo ip link del xeth{}".format(xeth))
+
+	HASH_DICT['result.detail'] = failure_summary
 
 
 def main():
@@ -130,39 +146,23 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
-            routes_count=dict(required=False, type='int'),
+            xeth=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
-    failure_summary = ''
-    switch_name = module.params['switch_name']
 
-    # Get all ip routes
-    ip_routes = execute_commands(module, 'ip route show')
-    ip_routes = ip_routes.splitlines()
-
-    # Get all routes from fib table
-    fib_routes = execute_commands(module, 'goes vnet show ip fib')
-    fib_routes = fib_routes.splitlines()
-
-    # Verify if there are at least given number of routes available
-    if len(ip_routes) < 1500 or len(fib_routes) < 1500:
-        RESULT_STATUS = False
-        failure_summary += 'On switch {} '.format(switch_name)
-        failure_summary += 'there are less than 1550 routes available'
-        failure_summary += ' {}ip routes and {}fib routes\n'.format(len(ip_routes), len(fib_routes))
+    vnetd_panic(module)
 
     # Calculate the entire test result
     HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
-    HASH_DICT['result.detail'] = failure_summary
 
     # Create a log file
     log_file_path = module.params['log_dir_path']
     log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
+    log_file = open(log_file_path, 'a')
     for key, value in HASH_DICT.iteritems():
         log_file.write(key)
         log_file.write('\n')
@@ -175,8 +175,7 @@ def main():
     # Exit the module and return the required JSON.
     module.exit_json(
         hash_dict=HASH_DICT,
-        log_file_path=log_file_path,
-        changed=False
+        log_file_path=log_file_path
     )
 
 if __name__ == '__main__':
