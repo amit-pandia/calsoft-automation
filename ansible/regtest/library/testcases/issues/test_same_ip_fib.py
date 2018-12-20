@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" Verify Ports """
+""" Test FIB Entries"""
 
 #
 # This file is part of Ansible
@@ -19,22 +19,32 @@
 #
 
 import shlex
-import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: verify_ports
+module: test_same_ip_fib
 author: Platina Systems
-short_description: Module to verify interface port link status.
+short_description: Module to test FIB entries for same IP for 2 different containers.
 description:
-    Module to change the speed to auto and verify link status after goes restart
+    Module to test FIB entries for same IP for 2 different containers.
 options:
     switch_name:
       description:
-        - Name of the switch on which goes health will be checked.
+        - Name of the switch on which tests will be performed.
+      required: False
+      type: str
+    container_name:
+      description:
+        - Comma separated list of names of the containers.
+      required: False
+      type: str
+    eth:
+      description:
+        - Comma separated list of names of the interfaces.
       required: False
       type: str
     hash_name:
@@ -47,35 +57,21 @@ options:
         - Path to log directory where logs will be stored.
       required: False
       type: str
-    platina_redis_channel:
-      description:
-        - Name of the platina redis channel.
-      required: False
-      type: str
 """
 
 EXAMPLES = """
-- name: Verify port link status
-  verify_ports:
+- name: Verify linking of interfaces inside container
+  test_same_ip_fib:
     switch_name: "{{ inventory_hostname }}"
-    platina_redis_channel: "platina-mk1"
     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
     log_dir_path: "{{ log_dir_path }}"
 """
 
 RETURN = """
-changed:
-  description: Boolean flag to indicate if any changes were made by this module.
-  returned: always
-  type: bool
 hash_dict:
   description: Dictionary containing key value pairs to store in hash.
   returned: always
   type: dict
-log_file_path:
-  description: Path to the log file on this switch.
-  returned: always
-  type: str
 """
 
 RESULT_STATUS = True
@@ -124,43 +120,95 @@ def execute_commands(module, cmd):
 
     return out
 
+import time
 
-def change_speed_and_verify_links(module, speed):
+def verify_fib_entries(module):
     """
-    Method to change interface speed and check link status
+    Method to verify linking of interfaces inside container.
     :param module: The Ansible module to fetch input parameters.
-    :param speed: Interface speed.
     """
-    global HASH_DICT, RESULT_STATUS
+    global RESULT_STATUS, HASH_DICT
     failure_summary = ''
     switch_name = module.params['switch_name']
-    platina_redis_channel = module.params['platina_redis_channel']
-    eth_list = [1, 5, 9, 13, 17, 21, 25, 29]
+    container_name = module.params['container_name'].split(',')
+    eth = module.params['eth'].split(',')
 
-    # Bring down interface and update the speed to auto
-    for eth in eth_list:
-        eth = 'xeth{}'.format(eth)
-        execute_commands(module, 'ifdown {}'.format(eth))
-        execute_commands(module, 'goes hset {} vnet.{}.speed {}'.format(
-            platina_redis_channel, eth, speed))
-        execute_commands(module, 'ifup {}'.format(eth))
+    d_move = '~/./docker_move.sh'
+    ip = '192.168.120.{}'.format(switch_name[-2::])
+    fib = []
 
-    # Restart goes
-    execute_commands(module, 'goes restart')
-    time.sleep(10)
-    # Check the port link status, it should be true
-    for eth in eth_list:
-        eth = 'xeth{}'.format(eth)
-        cmd = 'goes hget {} vnet.{}.link'.format(platina_redis_channel, eth)
-        link_out = execute_commands(module, cmd)
-        if 'true' not in link_out:
+    for i in range(len(container_name)):
+        # Bring up given interfaces in the docker container
+        cmd = '{} up {} xeth{} {}/24'.format(d_move, container_name[i], eth[i], ip)
+        out = execute_commands(module, cmd)
+        if out and 'not found in default namespace' in out:
             RESULT_STATUS = False
             failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'port link is not up '
-            failure_summary += 'for the interface {} '.format(eth)
-            failure_summary += 'when speed is set to {}\n'.format(speed)
+            failure_summary += 'unable to move the interface xeth{} into docker.\n'.format(eth)
+
+        cmd = 'goes vnet show ip fib'
+	time.sleep(5)
+        fib_out = execute_commands(module, cmd).splitlines()
+	for line in fib_out:
+            if ip in line and 'xeth{}'.format(eth[i]) in line:
+	                line = line.strip()
+        	        fib.append(line.split()[0])
+    
+    if fib[0] == fib[1]:
+        RESULT_STATUS = False
+        failure_summary += 'On switch {} '.format(switch_name)
+        failure_summary += 'FIB entries are missing while '
+        failure_summary += 'assigning same IP to 2 different containers.\n'
+        failure_summary += 'FIB Output- {}\n'.format(fib_out)
+
+    for i in range(len(container_name)):
+        # Bring down the interface from the docker container
+        cmd = '{} down {} xeth{}'.format(d_move, container_name[i], eth[i])
+        out = execute_commands(module, cmd)
+        if out:
+            RESULT_STATUS = False
+            failure_summary += 'On switch {} '.format(switch_name)
+            failure_summary += 'Command- {}\n'.format(cmd)
+            failure_summary += 'Down output- {}\n'.format(out)
+
+    ip = '10.1.0.{}'.format(switch_name[-2::])
+    fib = []
+
+    for i in range(len(container_name)):
+        cmd = 'ip netns add {}'.format(container_name[i])
+        execute_commands(module, cmd)
+
+        cmd = 'ip link set xeth{} netns {}'.format(eth[i], container_name[i])
+        execute_commands(module, cmd)
+
+        cmd = 'ip netns set {} {}'.format(container_name[i], eth[i])
+        execute_commands(module, cmd)
+
+        cmd = 'ip netns exec {} ip link set up xeth{}'.format(container_name[i], eth[i])
+        execute_commands(module, cmd)
+
+        cmd = 'ip netns exec {} ip add add {}/24 dev xeth{}'.format(container_name[i], ip, eth[i])
+        execute_commands(module, cmd)
+
+	cmd = 'goes vnet show ip fib'
+	fib_out = execute_commands(module, cmd).splitlines()
+	for line in fib_out:
+	    if ip in line and 'xeth{}'.format(eth[i]) in line:
+		    line = line.strip()
+		    temp = line.split()[-1]
+		    fib.append(temp.split(':')[0])
+
+    if fib and fib[0] == fib[1]:
+        RESULT_STATUS = False
+        failure_summary += 'On switch {} '.format(switch_name)
+        failure_summary += 'FIB entries are missing while '
+        failure_summary += 'assigning same IP to 2 different netns.\n'
+        failure_summary += 'FIB Output- {}\n'.format(fib_out)
 
     HASH_DICT['result.detail'] = failure_summary
+
+    # Get the GOES status info
+    execute_commands(module, 'goes status')
 
 
 def main():
@@ -168,30 +216,23 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
+            container_name=dict(required=False, type='str'),
+            eth=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
-            platina_redis_channel=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
 
-    for i in range(3):
-        # Change the interface speed to auto and check port link status
-        change_speed_and_verify_links(module, 'auto')
-
-        # Change the interface speed to 100g and check port link status
-        change_speed_and_verify_links(module, '100g')
-
-        # Change the interface speed to auto and check port link status
-        change_speed_and_verify_links(module, 'auto')
+    verify_fib_entries(module)
 
     # Calculate the entire test result
     HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
 
     # Create a log file
     log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
+    log_file_path += '/{}_'.format(module.params['hash_name']) + '.log'
     log_file = open(log_file_path, 'w')
     for key, value in HASH_DICT.iteritems():
         log_file.write(key)
@@ -205,10 +246,10 @@ def main():
     # Exit the module and return the required JSON.
     module.exit_json(
         hash_dict=HASH_DICT,
-        log_file_path=log_file_path,
-        changed=False
+        log_file_path=log_file_path
     )
 
 if __name__ == '__main__':
     main()
+
 

@@ -1,5 +1,6 @@
 ---
 
+
 - hosts: leaf:spine
   become: true
   ignore_errors: yes
@@ -9,9 +10,7 @@
 
     - debug:
         var: kernel_version.stdout_lines
-
-
-- include: ../installation/snmp_install.yml
+        
 
 - hosts: server_emulator
   become: true
@@ -21,55 +20,55 @@
       register: start_time
 
     - set_fact:
-        hash_name: "SNMP_polling_v2_community_{{ start_time.stdout }}"
+        hash_name: "issue_54_moving_sriov_interface_into_docker_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
-    
 
-- hosts: leaf[0]
+
+- hosts: spine[1]
   become: true
+
+  vars:
+    - containers: 'issue54'
+
   tasks:
     - file:
-        path: "{{ snmp_log_dir }}"
+        path: "{{ issues_log_dir }}"
         state: directory
 
-    - name: Copy snmpd.conf to remote nachine
+    - file:
+        path: "~/volumes/quagga/{{ containers }}"
+        state: directory
+
+    - name: Pull quagga container image from dockerhub
+      command: "docker pull stigt/debian-quagga:latest"
+
+    - name: Install docker compose
+      shell: "curl -L https://github.com/docker/compose/releases/download/1.17.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose"
+
+    - name: Make docker-compose file executable
+      shell: "chmod +x /usr/local/bin/docker-compose"
+
+    - name: Add docker_move.sh
       copy:
-        src: "../../files/{{ inventory_hostname }}/snmpd.conf"
-        dest: "{{ snmpd_conf_file }}"
+        src: ../../templates/docker_move.sh
+        dest: "~/docker_move.sh"
+        owner: root
+        group: root
+        mode: 0755
 
-    - name: Copy snmp.conf to the remote machine
-      copy:
-        src: "../../files/{{ inventory_hostname }}/snmp.conf"
-        dest: "{{ snmp_conf_file }}"
+    - name: Run docker-compose up
+      shell: "docker run --rm --privileged=true -P --hostname={{ containers }} --name={{ containers }} -d -v $(pwd)/volumes/quagga/{{ containers }}:/etc/quagga stigt/debian-quagga:latest"
+      args:
+        chdir: ~/
 
-
-- hosts: leaf[0]:spine[0]
-  become: true
-  tasks:
-    - name: Copy if.mib file to remote machine
-      copy:
-        src: "../../files/if.mib"
-        dest: "{{ snmp_if_mib_file }}" 
-  
-    - name: Restart snmpd
-      command: "service snmpd restart"
-
-    - name: Wait for some time to restart snmpd
-      pause:
-        seconds: 35
-
-
-- hosts: leaf[0]
-  become: true
-
-  tasks:
-    - name: Verify SNMP polling
-      test_snmp_polling:
-        spine_name: "{{ groups['spine'][0] }}"
-        package_name: "snmp"
-        switch_name: '{{ inventory_hostname }}'
+    - name: Bring up the container and verify FIB entries
+      test_updown_fib:
+        switch_name: "{{ inventory_hostname }}"
+        container_name: "{{ containers }}"
+        eth: '5'
+        frequency: 600
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        log_dir_path: "{{ snmp_log_dir }}"
+        log_dir_path: "{{ issues_log_dir }}"
       register: module_out
 
     - command: "date +%Y%m%d%T"
@@ -88,8 +87,27 @@
         hash_dict: "{{ module_out.hash_dict }}"
         log_content: "{{ logs['content'] | b64decode }}"
       delegate_to: 127.0.0.1
+      ignore_errors: yes
+
+    - name: Run docker-compose down
+      shell: "docker stop {{ containers }}"
+      args:
+        chdir: ~/
+
+    - name: Remove docker-compose files
+      file:
+        path: "~/docker_move.sh"
+        state: absent
+
+    - name: Restart goes
+      command: "goes restart"
+
+    - name: Wait few seconds
+      pause:
+        seconds: 10
 
     - include: ../../playbooks/get_goes_version_and_tags.yml
+
 
 
 - hosts: server_emulator
@@ -111,6 +129,7 @@
     - lineinfile:
         path: "{{ regression_summary_report }}"
         line: "{{ hash_name }}: {{ result.result_status }}"
+
 
 - hosts: leaf:spine
   become: true

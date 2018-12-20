@@ -25,10 +25,6 @@
         hash_name: "SNMP_trap_v2_community_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
 
-    - file:
-        path: "{{ snmptrapd_log_dir }}"
-        state: directory
-
 
 - hosts: leaf[0]
   become: true
