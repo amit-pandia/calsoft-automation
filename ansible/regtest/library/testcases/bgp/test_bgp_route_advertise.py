@@ -157,7 +157,7 @@ def verify_bgp_route_advertise(module):
     execute_commands(module, "vtysh -c 'sh running-config'")
 
     # Restart and check package status
-    execute_commands(module, 'service {} restart'.format(package_name))
+    # execute_commands(module, 'service {} restart'.format(package_name))
     execute_commands(module, 'service {} status'.format(package_name))
 
     # Get all bgp routes
@@ -190,7 +190,7 @@ def verify_bgp_route_advertise(module):
         failure_summary += 'is None'
 
     if is_ping:
-	packet_count = 5
+        packet_count = 5
         if switch_name in leaf_list1:
                 aleaf = True
                 p_list = leaf_list1
