@@ -83,9 +83,6 @@
       delegate_to: 127.0.0.1
       when: dry_run
 
-    - debug: 
-        var: module_out
-
     - set_fact:
         dry_run_cmds: "{{ dry_run_out.cmds }}"
       when: dry_run        
