@@ -179,22 +179,22 @@ def verify_vlan_configurations(module):
 
     # Run dhclient on spine switch and perform tcpdump on leaf switch to check
     # if dhcp request/reply packets can be seen along with untagged packets.
-    if switch_name == leaf_switch:
-        cmd = 'timeout 15 tcpdump -c 7 -net -i xeth{} not arp and not icmp'.format(eth)
-        cmd_out = execute_commands(module, cmd)
-
-        if cmd_out:
-            cmd_out = cmd_out.lower()
-            if 'bootp/dhcp' not in cmd_out:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += 'there are no dhcp packets and untagged packets '
-                failure_summary += 'captured in tcpdump for xeth{}\n'.format(eth)
-        else:
-            RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'failed to capture tcpdump output\n'
-    else:
+    if switch_name != leaf_switch:
+    #     cmd = 'timeout 15 tcpdump -c 7 -net -i xeth{} not arp and not icmp'.format(eth)
+    #     cmd_out = execute_commands(module, cmd)
+    #
+    #     if cmd_out:
+    #         cmd_out = cmd_out.lower()
+    #         if 'bootp/dhcp' not in cmd_out:
+    #             RESULT_STATUS = False
+    #             failure_summary += 'On switch {} '.format(switch_name)
+    #             failure_summary += 'there are no dhcp packets and untagged packets '
+    #             failure_summary += 'captured in tcpdump for xeth{}\n'.format(eth)
+    #     else:
+    #         RESULT_STATUS = False
+    #         failure_summary += 'On switch {} '.format(switch_name)
+    #         failure_summary += 'failed to capture tcpdump output\n'
+    # else:
         execute_commands(module, 'dhclient xeth{}'.format(eth))
         time.sleep(5)
 
@@ -214,32 +214,32 @@ def verify_vlan_configurations(module):
 
     # Run dhclient on spine switch and perform tcpdump on leaf switch to check
     # if dhcp request/reply packets can be seen along with tagged packets.
-    if switch_name == leaf_switch:
-        cmd = 'timeout 25 tcpdump -net -i xeth{} port 67 and port 68'.format(eth)
-        cmd_out = execute_commands(module, cmd)
-
-        if cmd_out:
-            if '802.1Q (0x8100)' not in cmd_out or 'vlan {}'.format(eth) not in cmd_out:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += 'there are no dhcp packets and tagged packets '
-                failure_summary += 'captured in tcpdump for xeth{}\n'.format(eth)
-        else:
-            RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'failed to capture tcpdump output\n'
-    else:
+    if switch_name != leaf_switch:
+    #     cmd = 'timeout 25 tcpdump -net -i xeth{} port 67 and port 68'.format(eth)
+    #     cmd_out = execute_commands(module, cmd)
+    #
+    #     if cmd_out:
+    #         if '802.1Q (0x8100)' not in cmd_out or 'vlan {}'.format(eth) not in cmd_out:
+    #             RESULT_STATUS = False
+    #             failure_summary += 'On switch {} '.format(switch_name)
+    #             failure_summary += 'there are no dhcp packets and tagged packets '
+    #             failure_summary += 'captured in tcpdump for xeth{}\n'.format(eth)
+    #     else:
+    #         RESULT_STATUS = False
+    #         failure_summary += 'On switch {} '.format(switch_name)
+    #         failure_summary += 'failed to capture tcpdump output\n'
+    # else:
         execute_commands(module, 'docker exec -i {} timeout 25 dhclient xeth{}.1'.format(container, eth))
         time.sleep(60)
 
     HASH_DICT['result.detail'] = failure_summary
 
-    # Bring down the Containers
-    cmd = 'docker stop {}'.format(container)
-    execute_commands(module, cmd)
-
-    cmd = 'docker rm {}'.format(container)
-    execute_commands(module, cmd)
+    # # Bring down the Containers
+    # cmd = 'docker stop {}'.format(container)
+    # execute_commands(module, cmd)
+    #
+    # cmd = 'docker rm {}'.format(container)
+    # execute_commands(module, cmd)
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
