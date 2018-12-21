@@ -31,7 +31,7 @@
       test_bmc_redis:
         switch_name: "{{ inventory_hostname }}"
         bmc_redis_ip: "{{ hostvars[groups['leaf'][0]].bmc_redis_ip }}"
-        platina_redis_channel: "platina"
+        platina_redis_channel: "platina-mk1-bmc"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
       register: module_out
 
@@ -51,7 +51,7 @@
       test_bmc_redis:
         switch_name: "{{ inventory_hostname }}"
         bmc_redis_ip: "{{ hostvars[groups['leaf'][1]].bmc_redis_ip }}"
-        platina_redis_channel: "platina"
+        platina_redis_channel: "platina-mk1-bmc"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
       register: module_out
 
@@ -71,7 +71,7 @@
       test_bmc_redis:
         switch_name: "{{ inventory_hostname }}"
         bmc_redis_ip: "{{ hostvars[groups['spine'][0]].bmc_redis_ip }}"
-        platina_redis_channel: "platina"
+        platina_redis_channel: "platina-mk1-bmc"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
       register: module_out
 
@@ -91,7 +91,7 @@
       test_bmc_redis:
         switch_name: "{{ inventory_hostname }}"
         bmc_redis_ip: "{{ hostvars[groups['spine'][1]].bmc_redis_ip }}"
-        platina_redis_channel: "platina"
+        platina_redis_channel: "platina-mk1-bmc"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
       register: module_out
 
