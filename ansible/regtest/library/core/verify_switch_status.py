@@ -224,7 +224,7 @@ def verify_port_links(module):
                 failure_summary += 'for the interface xeth{} {} powercycle\n'.format(eth, state)
 
     # Verify cmdline status
-    cmd = 'redis-cli -h 172.17.3.{} hget platina "cmdline.start"'.format(switch_name[-2::])
+    cmd = 'redis-cli -h 172.17.3.{} hget platina-mk1-bmc "cmdline.start"'.format(switch_name[-2::])
     out = execute_commands(module, cmd)
     if 'true' not in out:
         RESULT_STATUS = False
