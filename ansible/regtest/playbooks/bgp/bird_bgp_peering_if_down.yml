@@ -53,7 +53,7 @@
 
     - name: Wait few seconds for bgp convergence
       pause:
-        seconds: 35
+        seconds: 45
 
     - file:
         path: "{{ bgp_log_dir }}"
