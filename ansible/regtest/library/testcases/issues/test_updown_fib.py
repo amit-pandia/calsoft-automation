@@ -119,7 +119,7 @@ def execute_commands(module, cmd):
     key = '{0} {1} {2}'.format(module.params['switch_name'], exec_time, cmd)
 
     if out:
-        HASH_DICT[key] = out[:512] if len(out.encode('utf-8')) > 512 else out
+        HASH_DICT[key] = out # out[:512] if len(out.encode('utf-8')) > 512 else out
     else:
         HASH_DICT[key] = out
 
@@ -177,9 +177,10 @@ def verify_fib(module):
     else:
         ip = '192.168.120.{}'.format(eth)
         # Bring up given interfaces in the docker container
-        cmd = '{} up {} xeth{} {}/24'.format(d_move, container_name, eth, ip)
+        cmd = '{} up {} xeth{}'.format(d_move, container_name, eth)
         execute_commands(module, cmd)
-
+	import time
+	time.sleep(10)
         cmd = 'goes vnet show ip fib'
         out = execute_commands(module, cmd)
         if ip not in out:
