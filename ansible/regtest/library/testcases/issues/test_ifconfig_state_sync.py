@@ -22,7 +22,7 @@ import shlex
 import calendar
 
 from collections import OrderedDict
-
+import time
 from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
@@ -281,23 +281,23 @@ def verify_ifconfig_state(module):
 
     # Restart goes
     execute_commands(module, 'goes restart')
-
+    time.sleep(10)
     # Check interface state when interface is up
     check_interface_status_up(module)
 
     # Bring the interface down
     cmd = 'ifdown xeth{}'.format(eth)
     execute_commands(module, cmd)
-
+    time.sleep(15)
     # Check interface state when interface is down
     check_interface_status_down(module)
 
     # Bring the interface up
     cmd = 'ifup xeth{}'.format(eth)
     execute_commands(module, cmd)
-
+    
     # Check interface state when interface is up
-    check_interface_status_up(module)
+    #check_interface_status_up(module)
 
     # Check for errors in log file
     verify_log_dumps(module)

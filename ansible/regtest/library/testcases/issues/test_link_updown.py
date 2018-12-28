@@ -211,13 +211,24 @@ def move_interface(module):
 		elif '100% packet loss' in ping:
 		    failure_summary += 'From switch {} '.format(switch_name)
 		    failure_summary += 'the interface on destination switch is not pingable.\n'
+	else:
+		cmd = " ip netns exec {} ip link set down xeth{}".format(clr, eth)
+		execute_commands(module, cmd)
+		cmd = " ip netns exec {} ip link set up xeth{}".format(clr, eth)
+                execute_commands(module, cmd)
 
 
+
+    time.sleep(10)
     failure_summary += verify_goes_status(module)
     cmd = 'ip netns del {}'.format(switch_name)
     execute_commands(module, cmd)
+    execute_commands(module, "ifdown -a --allow vnet")
+    execute_commands(module, "ifup -a --allow vnet")
+#    execute_commands(module, "exit")
     cmd = 'goes restart'
     execute_commands(module, cmd)
+    time.sleep(10)
     failure_summary += verify_goes_status(module)
 
     HASH_DICT['result.detail'] = failure_summary

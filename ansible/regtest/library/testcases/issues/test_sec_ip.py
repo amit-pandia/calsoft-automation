@@ -108,14 +108,10 @@ def execute_commands(module, cmd):
     exec_time = run_cli(module, 'date +%Y%m%d%T')
     key = '{0} {1} {2}'.format(module.params['switch_name'], exec_time, cmd)
 
-    if out:
-        HASH_DICT[key] = out[:512] if len(out.encode('utf-8')) > 512 else out
-    else:
-        HASH_DICT[key] = out
-
+    HASH_DICT[key] = out
     return out
 
-
+import time
 def verify_fib(module):
     """
     Method to bring up and bring down docker containers.
@@ -133,7 +129,7 @@ def verify_fib(module):
     ip2 = '192.168.1.{}'.format(eth)
     cmd = 'ifconfig xeth{}:0 {} netmask 255.255.255.0 up'.format(eth, ip2)
     execute_commands(module, cmd)
-
+    time.sleep(10)
     cmd = 'ip add sh xeth{}'.format(eth)
     out = execute_commands(module, cmd)
     if ip2 not in out:
@@ -174,7 +170,10 @@ def verify_fib(module):
     HASH_DICT['result.detail'] = failure_summary
 
     # Get the GOES status info
+    execute_commands(module, "ifdown -a --allow vnet")
+    execute_commands(module, "ifup -a --allow vnet")
     execute_commands(module, 'goes restart')
+    time.sleep(10)
     execute_commands(module, 'goes status')
 
 
