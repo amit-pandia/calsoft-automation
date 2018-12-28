@@ -108,11 +108,7 @@ def execute_commands(module, cmd):
     exec_time = run_cli(module, 'date +%Y%m%d%T')
     key = '{0} {1} {2}'.format(module.params['switch_name'], exec_time, cmd)
 
-    if out:
-        HASH_DICT[key] = out#[:512] if len(out.encode('utf-8')) > 512 else out
-    else:
-        HASH_DICT[key] = out
-
+    HASH_DICT[key] = out
     return out
 
 import time
