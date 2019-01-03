@@ -29,12 +29,16 @@
       command: "{{ item }}"
       with_items:
       - 'goes restart'
-
-    - name: Wait few seconds for GOES to come up
-      pause:
-        seconds: 10
+      retries: "{{ goes_retry }}"
+      delay: "{{ goes_delay }}"
+      register: result
+      until: result.rc == 0
 
     - name: Restart bird
       service:
         name: bird
         state: restarted
+      retries: "{{ package_retry }}"
+      delay: "{{ package_delay }}"
+      register: result
+      until: result.rc == 0
