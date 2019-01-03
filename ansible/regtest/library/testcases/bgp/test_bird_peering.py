@@ -19,7 +19,7 @@
 #
 
 import shlex
-
+import time
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -137,8 +137,14 @@ def verify_bird_peering(module):
     execute_commands(module, 'cat /etc/bird/bird.conf')
 
     # Restart and check package status
-    execute_commands(module, 'service {} restart'.format(package_name))
-    execute_commands(module, 'service {} status'.format(package_name))
+    not_found = True
+    retries = module.params["retries"]
+    while retries and not_found:
+        execute_commands(module, 'service {} restart'.format(package_name))
+        time.sleep(int(module.params['delay']))
+        if "Active: active" in execute_commands(module, 'service {} status'.format(package_name)):
+            not_found = False
+        retries -= 1
 
     for line in config_file:
         line = line.strip()
@@ -241,4 +247,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
