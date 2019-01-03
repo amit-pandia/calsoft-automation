@@ -19,12 +19,10 @@
   tasks:
     - command: "date +%Y%m%d%T"
       register: start_time
-      when: not dry_run
 
     - set_fact:
         hash_name: "bird_bgp_peering_consistency_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
-      when: not dry_run
 
 
 - hosts: leaf:spine

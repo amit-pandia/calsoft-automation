@@ -54,8 +54,6 @@
       service:
         name: bird
         state: restarted
-      when: not dry_run
-
     - file:
         path: "{{ bgp_log_dir }}"
         state: directory

@@ -22,7 +22,6 @@
       with_items:
       - 'goes restart'
 
-
     - name: Restart bird
       service:
         name: bird
