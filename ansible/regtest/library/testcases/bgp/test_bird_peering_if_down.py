@@ -227,21 +227,18 @@ def check_bgp_neighbors(module, neighbor_ips, neighbor_as):
     return failure_summary
 
 
-def change_interface_state(module, eth_list, leaf_list, state):
+def change_interface_state(module, eth_list, state):
     """
     Method to bring up/down eth interfaces.
     :param module: The Ansible module to fetch input parameters.
     :param eth_list: List of eth interfaces.
-    :param leaf_list: List of leaf switches.
     :param state: State of the interface, either up or down.
     """
-    execute_commands(module, 'ifconfig xeth{} {}'.format(eth_list[1], state))
-    if leaf_list.index(module.params['switch_name']) == 0:
-        execute_commands(module, 'ifconfig xeth{} {}'.format(
-            eth_list[0], state))
-    else:
-        execute_commands(module, 'ifconfig xeth{} {}'.format(
-            eth_list[2], state))
+    # Bring down few eth interfaces on only leaf switches
+    for eth in eth_list:
+        eth = eth.strip()
+        cmd = 'ifconfig xeth{} {}'.format(eth, state)
+        execute_commands(module, cmd)
 
 
 def verify_bird_peering_if_down(module):
@@ -280,7 +277,7 @@ def verify_bird_peering_if_down(module):
 
     # Bring down the interfaces of leaf switches
     if is_leaf:
-        change_interface_state(module, eth_list, leaf_list, 'down')
+        change_interface_state(module, eth_list, 'down')
 
     # Wait for 160 seconds
     if not check_ping:
@@ -291,7 +288,7 @@ def verify_bird_peering_if_down(module):
 
     # Bring up the interfaces of leaf switches
     if is_leaf:
-        change_interface_state(module, eth_list, leaf_list, 'up')
+        change_interface_state(module, eth_list, 'up')
 
     # Wait for 40 seconds
     if not check_ping:
@@ -350,3 +347,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

@@ -65,7 +65,7 @@
         config_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/bird_bgp_peering_if_down.conf') }}"
         package_name: "bird"
         leaf_list: "{{ groups['leaf'] }}"
-        eth_list: "7,21,11"
+        eth_list: "3,19"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ bgp_log_dir }}"
       register: module_out
