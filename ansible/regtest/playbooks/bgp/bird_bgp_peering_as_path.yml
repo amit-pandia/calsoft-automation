@@ -19,12 +19,10 @@
   tasks:
     - command: "date +%Y%m%d%T"
       register: start_time
-      when: not dry_run
 
     - set_fact:
         hash_name: "bird_bgp_peering_as_path_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
-      when: not dry_run
 
 
 - hosts: spine
@@ -56,10 +54,6 @@
       service:
         name: bird
         state: restarted
-      retries: "{{ package_retry }}"
-      delay: "{{ package_delay }}"
-      register: result
-      until: result.rc == 0
       when: not dry_run
 
     - file:

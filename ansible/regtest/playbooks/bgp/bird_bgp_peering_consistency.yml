@@ -52,10 +52,6 @@
       service:
         name: bird
         state: restarted
-      retries: "{{ package_retry }}"
-      delay: "{{ package_delay }}"
-      register: result
-      until: result.rc == 0
       when: not dry_run
 
     - file:
