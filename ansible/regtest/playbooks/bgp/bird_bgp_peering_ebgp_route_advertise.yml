@@ -65,6 +65,8 @@
         leaf_list: "{{ groups['leaf'] }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ bgp_log_dir }}"
+        retries: "{{ package_retry }}"
+        delay: "{{ package_delay }}"
       register: module_out
       when: not dry_run
 

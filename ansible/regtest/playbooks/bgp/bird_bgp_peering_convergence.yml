@@ -133,6 +133,8 @@
         is_convergence: True
         propagate_switch: "{{ groups['leaf'][1] }}"
         spine_list: "{{ groups['spine'] }}"
+        retries: "{{ package_retry }}"
+        delay: "{{ package_delay }}"
         leaf_list: "{{ groups['leaf'] }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ bgp_log_dir }}"
