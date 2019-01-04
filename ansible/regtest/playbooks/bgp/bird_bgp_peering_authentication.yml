@@ -75,6 +75,10 @@
       delegate_to: 127.0.0.1
       when: dry_run
 
+    - set_fact:
+        dry_run_cmds: "{{ dry_run_out.cmds }}"
+      when: dry_run
+
     - command: "date +%Y%m%d%T"
       register: end_time
       when: not dry_run
@@ -133,6 +137,20 @@
 
 - hosts: leaf:spine
   become: true
+  vars:
+    config_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/bird_bgp_peering_authentication.conf') }}"
   tasks:
     - include: ../../playbooks/get_goes_status.yml start_time={{ hostvars['server_emulator']['start_time'] }} hash_name={{ hostvars['server_emulator']['hash_name'] }}
       when: not dry_run
+
+    - name: Print bgp config
+      debug:
+        var: config_file
+      when: dry_run
+      delegate_to: 127.0.0.1
+
+    - name: Print dry run output
+      debug:
+        var: dry_run_cmds
+      when: dry_run
+      delegate_to: 127.0.0.1

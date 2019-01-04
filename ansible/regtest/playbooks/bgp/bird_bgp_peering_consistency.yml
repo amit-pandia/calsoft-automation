@@ -78,9 +78,13 @@
         delay: "{{ package_delay }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ bgp_log_dir }}"
-        dry_run-mose: "{{ dry_run }}"
+        dry_run_mode: "{{ dry_run }}"
       register: dry_run_out
       delegate_to: 127.0.0.1
+      when: dry_run
+
+    - set_fact:
+        dry_run_cmds: "{{ dry_run_out.cmds }}"
       when: dry_run
 
     - command: "date +%Y%m%d%T"
@@ -141,6 +145,13 @@
 
 - hosts: leaf:spine
   become: true
+  gather_facts: no
   tasks:
     - include: ../../playbooks/get_goes_status.yml start_time={{ hostvars['server_emulator']['start_time'] }} hash_name={{ hostvars['server_emulator']['hash_name'] }}
       when: not dry_run
+
+    - name: Print dry run output
+      debug:
+        var: dry_run_cmds
+      when: dry_run
+      delegate_to: 127.0.0.1

@@ -156,7 +156,7 @@ def verify_bird_peering(module):
     for ip in neighbor_ips:
         index = neighbor_ips.index(ip)
         as_value = neighbor_as[index]
-
+        time.sleep(module.params["delay"])
         cmd = "birdc 'show protocols all bgp{}'".format(index + 1)
         bgp_out = execute_commands(module, cmd)
 
@@ -210,7 +210,8 @@ def main():
         execute_commands(module, 'cat /etc/bird/bird.conf')
         execute_commands(module, 'service {} restart'.format(package_name))
         execute_commands(module, 'service {} status'.format(package_name))
-        execute_commands(module, "birdc 'show protocols all bgp{}'")
+    	for index in (1, 2):
+        	execute_commands(module, "birdc 'show protocols all bgp{}'".format(index))
         execute_commands(module, 'goes status')
 
         for key, value in HASH_DICT.iteritems():
