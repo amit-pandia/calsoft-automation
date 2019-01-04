@@ -216,7 +216,6 @@ def main():
 
         for key, value in HASH_DICT.iteritems():
             cmds_list.append(key)
-
         # Exit the module and return the required JSON.
         module.exit_json(
             cmds=cmds_list
