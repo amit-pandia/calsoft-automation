@@ -276,24 +276,27 @@ def main():
     global HASH_DICT, RESULT_STATUS
 
     if module.params['dry_run_mode']:
-        package_name = module.params['package_name']
+	package_name = module.params['package_name']
         cmds_list = []
+        if not module.params["is_convergence"]:
 
-        execute_commands(module, 'cat /etc/bird/bird.conf')
+		execute_commands(module, 'cat /etc/bird/bird.conf')
 
-        # Restart and check package status
-        execute_commands(module, 'service {} restart'.format(package_name))
-        execute_commands(module, 'service {} status'.format(package_name))
+		# Restart and check package status
+		execute_commands(module, 'service {} restart'.format(package_name))
+		execute_commands(module, 'service {} status'.format(package_name))
 
-        eth_list = module.params['eth_list'].split(',')
+		eth_list = module.params['eth_list'].split(',')
 
-        for eth in eth_list:
-            execute_commands(module, 'ifconfig xeth{} down'.format(eth))
+		for eth in eth_list:
+		    execute_commands(module, 'ifconfig xeth{} down'.format(eth))
 
-        execute_commands(module, 'birdc show route')
+		execute_commands(module, 'birdc show route')
 
-        for eth in eth_list:
-            execute_commands(module, 'ifconfig xeth{} up'.format(eth))
+		for eth in eth_list:
+		    execute_commands(module, 'ifconfig xeth{} up'.format(eth))
+	else:
+		execute_commands(module, 'birdc show route')
 
         execute_commands(module, 'goes status')
         for key, value in HASH_DICT.iteritems():

@@ -77,13 +77,14 @@
     - name: Verify bird bgp peering convergence
       test_bird_peering_state_propagation:
         dry_run_mode: "{{ dry_run }}"
-      register: module_out
+        is_convergence: True
+      register: dry_run_out
       delegate_to: 127.0.0.1
       when: dry_run
 
     - set_fact:
         dry_run_cmds: "{{ dry_run_out.cmds }}"
-        when: dry_run
+      when: dry_run
 
     - command: "date +%Y%m%d%T"
       register: end_time
@@ -144,14 +145,15 @@
 
     - name: Verify bird bgp peering convergence
       test_bird_peering_state_propagation:
+        is_convergence: True
         dry_run_mode: "{{ dry_run }}"
-      register: module_out
+      register: dry_run_out
       delegate_to: 127.0.0.1
       when: dry_run
 
     - set_fact:
         dry_run_cmds: "{{ dry_run_out.cmds }}"
-        when: dry_run
+      when: dry_run
 
     - command: "date +%Y%m%d%T"
       register: end_time
@@ -221,7 +223,7 @@
       when: not dry_run
 
     - name: Print dry run output
-        debug:
-          var: dry_run_cmds
-        when: dry_run
-        delegate_to: 127.0.0.1
+      debug:
+        var: dry_run_cmds
+      delegate_to: 127.0.0.1
+      when: dry_run
