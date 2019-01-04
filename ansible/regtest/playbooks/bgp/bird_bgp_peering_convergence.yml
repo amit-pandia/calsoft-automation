@@ -49,8 +49,6 @@
       service:
         name: bird
         state: restarted
-      retries: "{{ package_retry }}"
-      delay: "{{ package_delay }}"
       when: not dry_run
 
     - file:
@@ -122,8 +120,6 @@
       service:
         name: bird
         state: restarted
-      retries: "{{ package_retry }}"
-      delay: "{{ package_delay }}"
       when: not dry_run
 
 

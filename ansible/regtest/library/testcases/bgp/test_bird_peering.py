@@ -138,9 +138,9 @@ def verify_bird_peering(module):
 
     # Restart and check package status
     not_found = True
+    execute_commands(module, 'service {} restart'.format(package_name))
     retries = module.params["retries"]
     while retries and not_found:
-        execute_commands(module, 'service {} restart'.format(package_name))
         time.sleep(int(module.params['delay']))
         if "Active: active" in execute_commands(module, 'service {} status'.format(package_name)):
             not_found = False
@@ -210,8 +210,8 @@ def main():
         execute_commands(module, 'cat /etc/bird/bird.conf')
         execute_commands(module, 'service {} restart'.format(package_name))
         execute_commands(module, 'service {} status'.format(package_name))
-    	for index in (1, 2):
-        	execute_commands(module, "birdc 'show protocols all bgp{}'".format(index))
+        for index in (1, 2):
+            execute_commands(module, "birdc 'show protocols all bgp{}'".format(index))
         execute_commands(module, 'goes status')
 
         for key, value in HASH_DICT.iteritems():
