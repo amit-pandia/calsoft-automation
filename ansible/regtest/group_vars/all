@@ -4,6 +4,12 @@ reset_config: True
 platina_redis_channel: platina-mk1
 iface_type: platina-mk1
 
+package_delay: 10
+package_retry: 6
+
+goes_delay: 2
+goes_retry: 10
+
 regression_summary_report: /var/log/regression/regression_summary_file_{{ testbed_name }}
 
 bgp_log_dir: /var/log/regression/bgp

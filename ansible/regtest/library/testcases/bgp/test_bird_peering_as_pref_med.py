@@ -127,7 +127,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -160,7 +160,14 @@ def verify_bird_peering(module):
 
     # Restart and check package status
     execute_commands(module, 'service {} restart'.format(package_name))
-    execute_commands(module, 'service {} status'.format(package_name))
+    retries = module.params["retries"]
+    import time
+    not_found = True
+    while retries and not_found:
+        if "Active: active" in execute_commands(module, 'service {} status'.format(package_name)):
+            not_found = False
+        retries -= 1
+        time.sleep(module.params["delay"])
 
     if switch_name == spine_switch:
         cmd = 'birdc show route all'
@@ -208,6 +215,9 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
+            delay=dict(required=False, type='int'),
+            retries=dict(required=False, type='int'),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             package_name=dict(required=False, type='str'),
             spine_switch=dict(required=False, type='str'),
             as_path=dict(required=False, type='str', default=''),
@@ -219,31 +229,49 @@ def main():
     )
 
     global HASH_DICT, RESULT_STATUS
+    if module.params['dry_run_mode']:
+        package_name = module.params['package_name']
+        cmds_list = []
 
-    verify_bird_peering(module)
+        execute_commands(module, 'cat /etc/bird/bird.conf')
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
+        execute_commands(module, 'birdc show route all')
+        execute_commands(module, 'goes status')
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+        verify_bird_peering(module)
 
-    log_file.close()
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 if __name__ == '__main__':
     main()
+
 

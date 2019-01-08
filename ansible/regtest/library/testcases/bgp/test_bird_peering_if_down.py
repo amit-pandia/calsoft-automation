@@ -124,7 +124,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -309,6 +309,9 @@ def main():
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
             config_file=dict(required=False, type='str'),
+            delay=dict(required=False, type='int'),
+            retries=dict(required=False, type='int'),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             package_name=dict(required=False, type='str'),
             leaf_list=dict(required=False, type='list', default=[]),
             eth_list=dict(required=False, type='str'),
@@ -320,29 +323,89 @@ def main():
 
     global HASH_DICT, RESULT_STATUS
 
-    verify_bird_peering_if_down(module)
+    if module.params['dry_run_mode']:
+        package_name = module.params['package_name']
+        cmds_list = []
+        is_leaf = True if module.params["switch_name"] in module.params["leaf_list"] else False
+        execute_commands(module, 'cat /etc/bird/bird.conf')
+        execute_commands(module, 'service {} status'.format(package_name))
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        for index in (1, 2):
+            execute_commands(module, "birdc 'show protocols all bgp{}'".format(index))
+        self_ip = '192.168.{}.1'.format(module.params["switch_name"][-2::])
+        if module.params['check_ping'] and is_leaf:
+            neighbor = list()
+            for leaf in module.params["leaf_list"]:
+                if module.params["switch_name"] not in leaf:
+                    ip = '192.168.{}.1'.format(leaf[-2::])
+                    neighbor.append(ip)
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+            for ip in neighbor:
+                packet_count = '3'
+                execute_commands(module, 'ping -w 3 -c {} -I {} {}'.format(packet_count, self_ip, ip))
 
-    log_file.close()
+        if is_leaf:
+            change_interface_state(module, module.params['eth_list'].split(','), 'down')
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        if not module.params["check_ping"]:
+            time.sleep(160)
+
+        for index in (0,1):
+            execute_commands(module, "birdc 'show protocols all bgp{}'".format(index + 1))
+
+        if module.params['check_ping'] and is_leaf:
+            neighbor = list()
+            for leaf in module.params["leaf_list"]:
+                if module.params["switch_name"] not in leaf:
+                    ip = '192.168.{}.1'.format(leaf[-2::])
+                    neighbor.append(ip)
+
+            for ip in neighbor:
+                packet_count = '3'
+                execute_commands(module, 'ping -w 3 -c {} -I {} {}'.format(packet_count, self_ip, ip))
+
+        if is_leaf:
+            change_interface_state(module, module.params['eth_list'].split(','), 'up')
+
+        if not module.params["check_ping"]:
+            time.sleep(40)
+
+        for index in (0, 1):
+            execute_commands(module, "birdc 'show protocols all bgp{}'".format(index + 1))
+
+        execute_commands(module, 'goes status')
+
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+
+        verify_bird_peering_if_down(module)
+
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 
 if __name__ == '__main__':

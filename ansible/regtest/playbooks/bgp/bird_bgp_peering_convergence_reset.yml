@@ -22,10 +22,6 @@
       with_items:
       - 'goes restart'
 
-    - name: Wait few seconds for GOES to come up
-      pause:
-        seconds: 10
-
     - name: Restart bird
       service:
         name: bird

@@ -19,7 +19,7 @@
 #
 
 import shlex
-
+import time
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -106,7 +106,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -137,8 +137,14 @@ def verify_bird_peering(module):
     execute_commands(module, 'cat /etc/bird/bird.conf')
 
     # Restart and check package status
+    not_found = True
     execute_commands(module, 'service {} restart'.format(package_name))
-    execute_commands(module, 'service {} status'.format(package_name))
+    retries = module.params["retries"]
+    while retries and not_found:
+        time.sleep(int(module.params['delay']))
+        if "Active: active" in execute_commands(module, 'service {} status'.format(package_name)):
+            not_found = False
+        retries -= 1
 
     for line in config_file:
         line = line.strip()
@@ -150,7 +156,7 @@ def verify_bird_peering(module):
     for ip in neighbor_ips:
         index = neighbor_ips.index(ip)
         as_value = neighbor_as[index]
-
+        time.sleep(module.params["delay"])
         cmd = "birdc 'show protocols all bgp{}'".format(index + 1)
         bgp_out = execute_commands(module, cmd)
 
@@ -185,6 +191,9 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
+            delay=dict(required=False, type='int'),
+            retries=dict(required=False, type='int'),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             config_file=dict(required=False, type='str'),
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
@@ -194,30 +203,49 @@ def main():
 
     global HASH_DICT, RESULT_STATUS
 
-    verify_bird_peering(module)
+    if module.params['dry_run_mode']:
+        package_name = module.params['package_name']
+        cmds_list = []
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        execute_commands(module, 'cat /etc/bird/bird.conf')
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
+        for index in (1, 2):
+            execute_commands(module, "birdc 'show protocols all bgp{}'".format(index))
+        execute_commands(module, 'goes status')
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+        verify_bird_peering(module)
 
-    log_file.close()
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 if __name__ == '__main__':
     main()
+
 
