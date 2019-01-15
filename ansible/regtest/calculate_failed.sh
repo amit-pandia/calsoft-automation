@@ -7,6 +7,6 @@ passed_no=$(grep -c "Passed" $1)
 #echo Passed = $passed_no
 
 total=$((failed_no + passed_no))
-final_count=$failed_no'/'$total
+FINAL_COUNT=$failed_no'/'$total
 
-echo $final_count
+echo $FINAL_COUNT
