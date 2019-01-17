@@ -86,7 +86,7 @@
       register: module_out
 
     - name: Powercycle the switch
-      shell: "redis-cli -h {{ bmc_redis_ip }} hset platina psu.powercycle true"
+      shell: "redis-cli -h {{ bmc_redis_ip }} hset platina-mk1-bmc psu.powercycle true"
       async: 1
       poll: 0
       delegate_to: 127.0.0.1
@@ -144,7 +144,7 @@
       register: module_out
 
     - name: Powercycle the switch
-      shell: "redis-cli -h {{ bmc_redis_ip }} hset platina psu.powercycle true"
+      shell: "redis-cli -h {{ bmc_redis_ip }} hset platina-mk1-bmc psu.powercycle true"
       async: 1
       poll: 0
       delegate_to: 127.0.0.1
