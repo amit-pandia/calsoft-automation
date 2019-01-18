@@ -2,7 +2,6 @@
 
 - hosts: leaf:spine
   become: true
-  ignore_errors: yes
   tasks:
     - name: Get goes status
       command: goes status
