@@ -16,7 +16,7 @@ iface eth0 inet static
   address 172.17.2.42
   netmask 255.255.254.0
   gateway 172.17.2.1
-  Dns-nameservers 8.8.8.8 8.8.4.4
+  dns-nameservers 8.8.8.8 8.8.4.4
 
 auto xeth1-1
 iface xeth1-1 inet static

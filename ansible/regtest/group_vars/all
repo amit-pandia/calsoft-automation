@@ -7,8 +7,8 @@ iface_type: platina-mk1
 package_delay: 10
 package_retry: 6
 
-goes_delay: 2
-goes_retry: 10
+goes_delay: 10
+goes_retry: 3
 
 regression_summary_report: /var/log/regression/regression_summary_file_{{ testbed_name }}
 

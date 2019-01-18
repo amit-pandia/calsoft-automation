@@ -19,7 +19,7 @@
 #
 
 import shlex
-
+import time
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -120,7 +120,11 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    out = run_cli(module, cmd)
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
+        out = None
+    else:
+        out = run_cli(module, cmd)
+
 
     # Store command prefixed with exec time as key and
     # command output as value in the hash dictionary
@@ -140,6 +144,7 @@ def verify_port_links(module):
     failure_summary = ''
     switch_name = module.params['switch_name']
     speed_list = module.params['speed'].split(',')
+    f_ports = module.params['f_ports']
     media = module.params['media']
     fec = module.params['fec']
     platina_redis_channel = module.params['platina_redis_channel']
@@ -149,8 +154,14 @@ def verify_port_links(module):
 
     for speed in speed_list:
         if speed == '100g':
-            is_subports = False
-            eth_list = ['1']
+            is_subports = False 
+	    if f_ports:
+	            eth_list = [str(ele) for ele in f_ports if ele % 2 != 0]
+		    amedia = 'fiber'
+	    else:
+		    amedia = media
+		    eth_list = ['1']
+	    fec = 'cl91'
         elif speed == '10g':
             is_subports = True
             eth_list = ['3', '11']
@@ -180,12 +191,13 @@ def verify_port_links(module):
         if not is_subports:
             for eth in eth_list:
                 # Verify interface media is set to correct value
+	        #time.sleep(5)
                 cmd = 'goes hget {} vnet.xeth{}.media'.format(platina_redis_channel, eth)
                 out = execute_commands(module, cmd)
-                if media not in out:
+                if amedia not in out:
                     RESULT_STATUS = False
                     failure_summary += 'On switch {} '.format(switch_name)
-                    failure_summary += 'interface media is not set to copper '
+                    failure_summary += 'interface media is not set to {} '.format(amedia)
                     failure_summary += 'for the interface xeth{}\n'.format(eth)
 
                 # Verify speed of interfaces are set to correct value
@@ -199,6 +211,7 @@ def verify_port_links(module):
                     failure_summary += 'the interface xeth{}\n'.format(eth)
 
                 # Verify fec of interfaces are set to correct value
+		#time.sleep(5)
                 cmd = 'goes hget {} vnet.xeth{}.fec'.format(platina_redis_channel, eth)
                 out = execute_commands(module, cmd)
                 if fec not in out:
@@ -270,40 +283,128 @@ def main():
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
             speed=dict(required=False, type='str'),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             media=dict(required=False, type='str'),
             fec=dict(required=False, type='str', default=''),
             platina_redis_channel=dict(required=False, type='str'),
+            f_ports=dict(required=False, type='list'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
+    if module.params['dry_run_mode']:
+	cmds_list = []
+        switch_name = module.params['switch_name']
+    	speed_list = module.params['speed'].split(',')
+    	media = module.params['media']
+    	fec = module.params['fec']
+    	platina_redis_channel = module.params['platina_redis_channel']
+    	is_subports = False
+    	is_lane2_count2 = False
+    	eth_list = []
 
-    # Verify port link
-    verify_port_links(module)
+    	for speed in speed_list:
+        	if speed == '100g':
+            		is_subports = False
+            		eth_list = ['1', '17']
+            		amedia = 'fiber'
+            		fec = 'cl91'
+        	elif speed == '10g':
+            		is_subports = True
+            		eth_list = ['3', '11']
+            		subports = ['1', '3']
+            		fec = 'cl74'
+        	elif speed == '20g':
+            		is_subports = True
+            		eth_list = ['3', '11']
+            		subports = ['2', '4']
+            		fec = 'cl74'
+        	elif speed == '25g':
+            		is_subports = True
+            		eth_list = ['5', '13']
+            		subports = ['1', '2', '3', '4']
+            		fec = 'cl74'
+        	elif speed == '50g':
+            		is_subports = True
+            		is_lane2_count2 = True
+            		eth_list = ['7', '15']
+            		fec = 'cl74'
+        	elif speed == '1g':
+            		is_subports = True
+            		eth_list = ['9']
+            		fec = 'none'
+            		speed = '1000m'
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+		if not is_subports:
+		    for eth in eth_list:
+			# Verify interface media is set to correct value
+			#time.sleep(5)
+			cmd = 'goes hget {} vnet.xeth{}.media'.format(platina_redis_channel, eth)
+			execute_commands(module, cmd)
+			# Verify speed of interfaces are set to correct value
+			cmd = 'goes hget {} vnet.xeth{}.speed'.format(platina_redis_channel, eth)
+			execute_commands(module, cmd)
+			# Verify fec of interfaces are set to correct value
+			#time.sleep(5)
+			cmd = 'goes hget {} vnet.xeth{}.fec'.format(platina_redis_channel, eth)
+			execute_commands(module, cmd)
+			# Verify if port links are up
+			cmd = 'goes hget {} vnet.xeth{}.link'.format(platina_redis_channel, eth)
+			execute_commands(module, cmd)
+		else:
+		    if is_lane2_count2:
+			subports = ['1', '2']
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'a')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+		    for eth in eth_list:
+			for port in subports:
+			    # Verify interface media is set to correct value
+			    cmd = 'goes hget {} vnet.xeth{}-{}.media'.format(platina_redis_channel, eth, port)
+			    execute_commands(module, cmd)
+			    # Verify speed of interfaces are set to correct value
+			    cmd = 'goes hget {} vnet.xeth{}-{}.speed'.format(platina_redis_channel, eth, port)
+			    execute_commands(module, cmd)
+			    # Verify fec of interfaces are set to correct value
+			    cmd = 'goes hget {} vnet.xeth{}-{}.fec'.format(platina_redis_channel, eth, port)
+			    execute_commands(module, cmd)
+			    # Verify if port links are up
+			    cmd = 'goes hget {} vnet.xeth{}-{}.link'.format(platina_redis_channel, eth, port)
+			    execute_commands(module, cmd)
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
 
-    log_file.close()
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+	
+    else:
+	    # Verify port link
+	    verify_port_links(module)
+
+	    # Calculate the entire test result
+	    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+	    # Create a log file
+	    log_file_path = module.params['log_dir_path']
+	    log_file_path += '/{}.log'.format(module.params['hash_name'])
+	    log_file = open(log_file_path, 'a')
+	    for key, value in HASH_DICT.iteritems():
+		log_file.write(key)
+		log_file.write('\n')
+		log_file.write(str(value))
+		log_file.write('\n')
+		log_file.write('\n')
+
+	    log_file.close()
+
+	    # Exit the module and return the required JSON.
+	    module.exit_json(
+		hash_dict=HASH_DICT,
+		log_file_path=log_file_path
+	    )
 
 
 if __name__ == '__main__':

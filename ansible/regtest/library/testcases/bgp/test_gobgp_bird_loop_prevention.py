@@ -21,7 +21,7 @@
 import shlex
 
 from collections import OrderedDict
-from mrtparse import *
+#from mrtparse import *
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -169,7 +169,6 @@ def main():
     global HASH_DICT, RESULT_STATUS
 
     if module.params['dry_run_mode']:
-        package_name = module.params['package_name']
         cmds_list = []
 
         execute_commands(module, 'python /var/log/print_all.py {}'.format(module.params['log_file']))

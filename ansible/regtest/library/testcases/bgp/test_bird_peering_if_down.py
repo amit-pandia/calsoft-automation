@@ -196,7 +196,7 @@ def check_bgp_neighbors(module, neighbor_ips, neighbor_as):
     for ip in neighbor_ips:
         index = neighbor_ips.index(ip)
         as_value = neighbor_as[index]
-
+	time.sleep(module.params['delay'])
         cmd = "birdc 'show protocols all bgp{}'".format(index + 1)
         bgp_out = execute_commands(module, cmd)
 

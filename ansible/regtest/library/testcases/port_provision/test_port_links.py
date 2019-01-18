@@ -131,7 +131,10 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    out = run_cli(module, cmd)
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
+        out = None
+    else:
+        out = run_cli(module, cmd)
 
     # Store command prefixed with exec time as key and
     # command output as value in the hash dictionary
@@ -151,7 +154,8 @@ def verify_goes_status(module, switch_name):
     """
     global RESULT_STATUS
     failure_summary = ''
-
+    import time
+    time.sleep(module.params['goes_delay'])
     # Get the GOES status info
     goes_status = execute_commands(module, 'goes status')
 
@@ -208,6 +212,11 @@ def verify_port_links(module):
     failure_summary += verify_networking_status(module, switch_name)
 
     if not is_subports:
+        for ele in module.params['f_ports']:
+                try:
+                        eth_list.remove(str(ele))
+                except:
+                        pass
         for eth in eth_list:
             # Verify interface media is set to correct value
             cmd = 'goes hget {} vnet.xeth{}.media'.format(platina_redis_channel, eth)
@@ -254,7 +263,42 @@ def verify_port_links(module):
                 failure_summary += 'On switch {} '.format(switch_name)
                 failure_summary += 'autoneg is not set to {} for '.format(autoneg)
                 failure_summary += 'the interface xeth{}\n'.format(eth)
+
+        afec = "cl91"
+        amedia = "fiber"
+        f_ports = module.params['f_ports']
+        for ele in f_ports: 
+		if ele%2 == 0:
+			continue
+		else:
+                        cmd1 = 'goes hget {} vnet.xeth{}.fec'.format(platina_redis_channel, ele)
+                        cmd2 = 'goes hget {} vnet.xeth{}.media'.format(platina_redis_channel, ele)
+                        cmd3 = 'goes hget {} vnet.xeth{}.link'.format(platina_redis_channel, ele)
+                        out1 = run_cli(module, cmd1)
+                        out2 = run_cli(module, cmd2)
+                        out3 = run_cli(module, cmd3)
+                        if afec not in out1:
+                                RESULT_STATUS = False
+                                failure_summary += 'On switch {} '.format(switch_name)
+                                failure_summary += 'fec of the interface {} '.format(ele)
+                                failure_summary += 'is not set to {}'.format(afec)
+                        if amedia not in out2:
+                                RESULT_STATUS = False
+                                failure_summary += 'On switch {} '.format(switch_name)
+                                failure_summary += 'media of the interface {} '.format(ele)
+                                failure_summary += 'is not set to {}'.format(amedia)
+                        if 'true' not in out3:
+                                RESULT_STATUS = False
+                                failure_summary += 'On switch {} '.format(switch_name)
+                                failure_summary += 'link of the interface {} '.format(ele)
+                                failure_summary += 'is not set to True.\n'
+
     else:
+        for ele in module.params['f_ports']:
+		try:
+			eth_list.remove(str(ele))
+		except:
+			pass
         if not is_lane2_count2:
             subports = ['1', '2', '3', '4']
         else:
@@ -307,7 +351,37 @@ def verify_port_links(module):
                     failure_summary += 'On switch {} '.format(switch_name)
                     failure_summary += 'autoneg is not set to {} for '.format(autoneg)
                     failure_summary += 'the interface xeth{}-{}\n'.format(eth, port)
+        
+	afec = "cl91"
+        amedia = "fiber"
+	f_ports = module.params['f_ports']
+        for ele in f_ports:
+		if ele % 2 == 0:
+			continue
+		else:
+		       	cmd1 = 'goes hget {} vnet.xeth{}.fec'.format(platina_redis_channel, ele)
+			cmd2 = 'goes hget {} vnet.xeth{}.media'.format(platina_redis_channel, ele)
+			cmd3 = 'goes hget {} vnet.xeth{}.link'.format(platina_redis_channel, ele)
+			out1 = run_cli(module, cmd1)
+			out2 = run_cli(module, cmd2)
+			out3 = run_cli(module, cmd3)
+			if afec not in out1:
+                    		RESULT_STATUS = False
+	                    	failure_summary += 'On switch {} '.format(switch_name)
+                    		failure_summary += 'fec of the interface {} '.format(ele)
+                    		failure_summary += 'is not set to {}'.format(afec)
+			if amedia not in out2:
+                                RESULT_STATUS = False
+                                failure_summary += 'On switch {} '.format(switch_name)
+                                failure_summary += 'media of the interface {} '.format(ele)
+                                failure_summary += 'is not set to {}'.format(amedia)
+			if 'true' not in out3:
+                                RESULT_STATUS = False
+                                failure_summary += 'On switch {} '.format(switch_name)
+                                failure_summary += 'link of the interface {} '.format(ele)
+                                failure_summary += 'is not set to True.\n'
 
+ 
     HASH_DICT['result.detail'] = failure_summary
 
     # Get the GOES status info
@@ -321,8 +395,11 @@ def main():
             switch_name=dict(required=False, type='str'),
             speed=dict(required=False, type='str'),
             media=dict(required=False, type='str'),
+	    f_ports=dict(required=False, type='list'),
             fec=dict(required=False, type='str', default=''),
             autoneg=dict(required=False, type='str', default=''),
+            goes_delay=dict(required=False, type='int', default=10),
+	    dry_run_mode=dict(required=False, type='bool'),
             platina_redis_channel=dict(required=False, type='str'),
             is_subports=dict(required=False, type='bool', default=False),
             is_lane2_count2=dict(required=False, type='bool', default=False),
@@ -334,29 +411,86 @@ def main():
     global HASH_DICT, RESULT_STATUS
 
     # Verify port link
-    verify_port_links(module)
+    if module.params['dry_run_mode']:
+        cmds_list = []
+	switch_name = module.params['switch_name']
+    	speed = module.params['speed']
+    	media = module.params['media']
+    	fec = module.params['fec']
+    	autoneg = module.params['autoneg']
+    	is_subports = module.params['is_subports']
+    	is_lane2_count2 = module.params['is_lane2_count2']
+    	platina_redis_channel = module.params['platina_redis_channel']
+    	eth_list = ['1', '3', '5', '7', '9', '11', '13', '15', '17', '19', '21', '23', '25', '27', '29', '31']
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+	execute_commands(module, 'goes status')
+	execute_commands(module, 'service networking status')
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'a')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+	if not is_subports:
+        	for eth in eth_list:
+			execute_commands(module, 'goes hget {} vnet.xeth{}.media'.format(platina_redis_channel, eth))
+			execute_commands(module, 'goes hget {} vnet.xeth{}.speed'.format(platina_redis_channel, eth))
+			execute_commands(module, 'goes hget {} vnet.xeth{}.fec'.format(platina_redis_channel, eth))
+			execute_commands(module, 'goes hget {} vnet.xeth{}.link'.format(platina_redis_channel, eth))
+			execute_commands(module, 'ethtool xeth{}'.format(eth))
+	else:
+		for ele in module.params['f_ports']:
+			try:
+				eth_list.remove(ele)
+			except:
+				pass
+		if not is_lane2_count2:
+		    subports = ['1', '2', '3', '4']
+		else:
+		    subports = ['1', '2']
 
-    log_file.close()
+		for eth in eth_list:
+            		for port in subports:
+		                # Verify interface media is set to correct value
+                		execute_commands(module, 'goes hget {} vnet.xeth{}-{}.media'.format(platina_redis_channel, eth, port))
+				execute_commands(module, 'goes hget {} vnet.xeth{}-{}.speed'.format(platina_redis_channel, eth, port))
+				execute_commands(module, 'goes hget {} vnet.xeth{}-{}.tec'.format(platina_redis_channel, eth, port))
+				execute_commands(module, 'goes hget {} vnet.xeth{}-{}.link'.format(platina_redis_channel, eth, port))
+				execute_commands(module, 'ethtool xeth{}-{}'.format(eth, port))
+		afec = "cl91"
+		amedia = "fiber"
+		f_ports = module.params['f_ports']
+		for ele in f_ports:
+				execute_commands(module, 'goes hget {} vnet.xeth{}.fec'.format(platina_redis_channel, ele))
+				execute_commands(module, 'goes hget {} vnet.xeth{}.media'.format(platina_redis_channel, ele))
+				execute_commands(module, 'goes hget {} vnet.xeth{}.link'.format(platina_redis_channel, ele))
+		
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+	    verify_port_links(module)
+
+	    # Calculate the entire test result
+	    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+	    # Create a log file
+	    log_file_path = module.params['log_dir_path']
+	    log_file_path += '/{}.log'.format(module.params['hash_name'])
+	    log_file = open(log_file_path, 'a')
+	    for key, value in HASH_DICT.iteritems():
+		log_file.write(key)
+		log_file.write('\n')
+		log_file.write(str(value))
+		log_file.write('\n')
+		log_file.write('\n')
+
+	    log_file.close()
+
+	    # Exit the module and return the required JSON.
+	    module.exit_json(
+		hash_dict=HASH_DICT,
+		log_file_path=log_file_path
+	    )
 
 
 if __name__ == '__main__':
