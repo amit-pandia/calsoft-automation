@@ -1,0 +1,19 @@
+---
+
+- hosts: leaf:spine
+  become: true
+  ignore_errors: yes
+  tasks:
+    - name: Get goes status
+      command: goes status
+      register: goes
+
+    - name: Print goes status
+      debug:
+        var: goes.stdout
+
+    - name: Check summary report for failures
+      fail:
+        msg: "Regression Failed"
+      when: goes.stdout.find('Not OK') != -1
+
