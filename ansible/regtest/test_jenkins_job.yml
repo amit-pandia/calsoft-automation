@@ -15,5 +15,4 @@
     - name: Check summary report for failures
       fail:
         msg: "Regression Failed"
-      when: goes.stdout.find('Not OK') != -1
 
