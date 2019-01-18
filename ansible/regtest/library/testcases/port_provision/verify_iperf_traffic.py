@@ -115,8 +115,10 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    out = run_cli(module, cmd)
-
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
+        out = None
+    else:
+        out = run_cli(module, cmd)
     # Store command prefixed with exec time as key and
     # command output as value in the hash dictionary
     exec_time = run_cli(module, 'date +%Y%m%d%T')
@@ -138,7 +140,13 @@ def verify_traffic(module):
     is_subports = module.params['is_subports']
     is_lane2_count2 = module.params['is_lane2_count2']
     eth_list = ['1', '3', '5', '7', '9', '11', '13', '15', '17', '19', '21', '23', '25', '27', '29', '31']
-
+    f_ports = module.params['f_ports']
+    #print(f_ports)
+    for ele in f_ports:
+                try:
+                        eth_list.remove(str(ele))
+                except:
+                        pass
     if is_subports:
         if not is_lane2_count2:
             subport = ['1', '2', '3', '4']
@@ -146,46 +154,66 @@ def verify_traffic(module):
             subport = ['1', '2']
     else:
         subport = '1'
-
+    #acmd = []
     for eth in eth_list:
+	import time
         ind = eth_list.index(eth)
-        if ind <= 7:
-            last_octet = eth_ips_last_octet[0]
+        if f_ports:
+		if ind < 7:
+                    last_octet = eth_ips_last_octet[0]
+                else:
+                    last_octet = eth_ips_last_octet[1]
         else:
-            last_octet = eth_ips_last_octet[1]
+		if ind <= 7:
+                    last_octet = eth_ips_last_octet[0]
+                else:
+                    last_octet = eth_ips_last_octet[1]
+
 
         if is_subports:
             for port in subport:
                 cmd = 'iperf -c 10.{}.{}.{} -t 2 -P 1'.format(eth, port, last_octet)
+	        #acmd.append(cmd)
+		#time.sleep(module.params['package_delay'])
                 traffic_out = run_cli(module, cmd)
-
                 if ('Transfer' not in traffic_out and 'Bandwidth' not in traffic_out and
                         'Bytes' not in traffic_out and 'bits/sec' not in traffic_out):
                     RESULT_STATUS = False
                     failure_summary += 'On switch {} '.format(switch_name)
                     failure_summary += 'iperf traffic cannot be verified for '
                     failure_summary += 'xeth{}-{} using command {}\n'.format(eth, port, cmd)
+
+
         else:
+	    #acmd = list()
             cmd = 'iperf -c 10.0.{}.{} -t 2 -P 1'.format(eth, last_octet)
             traffic_out = run_cli(module, cmd)
-
+	    #acmd.append(cmd)
+	    #raise ("INtentional")
             if ('Transfer' not in traffic_out and 'Bandwidth' not in traffic_out and
                     'Bytes' not in traffic_out and 'bits/sec' not in traffic_out):
                 RESULT_STATUS = False
                 failure_summary += 'On switch {} '.format(switch_name)
                 failure_summary += 'iperf traffic cannot be verified for '
                 failure_summary += 'xeth{} using command {}\n'.format(eth, cmd)
+    #print(acmd)
+    #raise ("INtentional")
+    for eth in f_ports:
+        ind = f_ports.index(eth)
+        if eth < 17:
+            last_octet = eth_ips_last_octet[0]
+        else:
+            last_octet = eth_ips_last_octet[1]
 
-    # for eth in eth_list:
-    #     for port in subport:
-    #         cmd = 'goes hget platina-mk1 eth-{}-{}'.format(eth, port)
-    #         out = run_cli(module, cmd).splitlines()
-    #         for line in out:
-    #             if 'vnet.eth-{}-{}.port-rx-crc-error-packet'.format(eth, port) in line and '0' not in line:
-    #                 RESULT_STATUS = False
-    #                 failure_summary += 'On switch {} '.format(switch_name)
-    #                 failure_summary += 'crc error count is not 0 for interface '
-    #                 failure_summary += 'eth-{}-{} \n'.format(eth, port)
+        cmd = 'iperf -c 10.0.{}.{} -t 2 -P 1'.format(eth, last_octet)
+        traffic_out = run_cli(module, cmd)
+        if ('Transfer' not in traffic_out and 'Bandwidth' not in traffic_out and
+            'Bytes' not in traffic_out and 'bits/sec' not in traffic_out):
+               RESULT_STATUS = False
+               failure_summary += 'On switch {} '.format(switch_name)
+               failure_summary += 'iperf traffic cannot be verified for '
+               failure_summary += 'xeth{} using command {}\n'.format(eth, cmd)
+
 
     HASH_DICT['result.detail'] = failure_summary
 
@@ -199,7 +227,10 @@ def main():
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
             eth_ips_last_octet=dict(required=False, type='str', default=''),
+	    f_ports=dict(required=False, type="list"),
             is_subports=dict(required=False, type='bool', default=False),
+            package_delay=dict(required=False, type='int', default=10),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             is_lane2_count2=dict(required=False, type='bool', default=False),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str')
@@ -207,31 +238,77 @@ def main():
     )
 
     global HASH_DICT, RESULT_STATUS
+    switch_name = module.params['switch_name']
+    eth_ips_last_octet = module.params['eth_ips_last_octet'].split(',')
+    is_subports = module.params['is_subports']
+    is_lane2_count2 = module.params['is_lane2_count2']
+    eth_list = ['1', '3', '5', '7', '9', '11', '13', '15', '17', '19', '21', '23', '25', '27', '29', '31']
+    f_ports = module.params['f_ports']
+    
+    if module.params['dry_run_mode']:
+        cmds_list = []
+	if is_subports:
+	        for ele in f_ports:
+        	        try:
+                	        eth_list.remove(ele)
+                	except:
+                        	pass
+        	if not is_lane2_count2:
+            		subport = ['1', '2', '3', '4']
+        	else:
+           		subport = ['1', '2']
+    	else:
+        	subport = '1'
 
-    # Verify iperf traffic
-    verify_traffic(module)
+	for eth in eth_list:
+		ind = eth_list.index(eth)
+		if ind <= 7:
+		    last_octet = eth_ips_last_octet[0]
+		else:
+		    last_octet = eth_ips_last_octet[1]
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+		if is_subports:
+		    for port in subport:
+			execute_commands(module, 'iperf -c 10.{}.{}.{} -t 2 -P 1'.format(eth, port, last_octet))
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'a')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+		    for ele in f_ports:
+			execute_commands(module, 'iperf -c 10.0.{}.{} -t 2 -P 1'.format(eth, last_octet))
 
-    log_file.close()
+		else:
+		    execute_commands(module, 'iperf -c 10.0.{}.{} -t 2 -P 1'.format(eth, last_octet))
+        execute_commands(module, 'goes status')
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+	    # Verify iperf traffic
+	    verify_traffic(module)
+
+	    # Calculate the entire test result
+	    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+	    # Create a log file
+	    log_file_path = module.params['log_dir_path']
+	    log_file_path += '/{}.log'.format(module.params['hash_name'])
+	    log_file = open(log_file_path, 'a')
+	    for key, value in HASH_DICT.iteritems():
+		log_file.write(key)
+		log_file.write('\n')
+		log_file.write(str(value))
+		log_file.write('\n')
+		log_file.write('\n')
+
+	    log_file.close()
+
+	    # Exit the module and return the required JSON.
+	    module.exit_json(
+		hash_dict=HASH_DICT,
+		log_file_path=log_file_path
+	    )
 
 
 if __name__ == '__main__':

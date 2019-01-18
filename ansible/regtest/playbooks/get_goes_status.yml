@@ -3,6 +3,9 @@
   command: goes status
   register: goes
   ignore_errors: yes
+  retries: "{{ goes_retry }}"
+  delay: "{{ goes_delay }}"
+  until: goes.rc == 0 
 
 - name: Print goes status
   debug:

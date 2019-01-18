@@ -107,7 +107,10 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    out = run_cli(module, cmd)
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
+        out = None
+    else:
+        out = run_cli(module, cmd)
 
     # Store command prefixed with exec time as key and
     # command output as value in the hash dictionary
@@ -135,7 +138,7 @@ def verify_traffic(module):
     for speed in speed_list:
         if speed == '100g':
             is_subports = False
-            eth_list = ['1']
+            eth_list = ['1', '17']
         elif speed == '10g':
             is_subports = True
             eth_list = ['3']
@@ -192,6 +195,7 @@ def main():
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
             eth_ips_last_octet=dict(required=False, type='str', default=''),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             speed=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str')
@@ -199,31 +203,78 @@ def main():
     )
 
     global HASH_DICT, RESULT_STATUS
+    if module.params['dry_run_mode']:
+	    cmds_list = []
+	    switch_name = module.params['switch_name']
+	    speed_list = module.params['speed'].split(',')
+	    eth_ips_last_octet = module.params['eth_ips_last_octet'].split(',')
+	    is_subports = False
+	    is_lane2_count2 = False
+	    eth_list = []
 
-    # Verify iperf traffic
-    verify_traffic(module)
+	    for speed in speed_list:
+		if speed == '100g':
+		    is_subports = False
+		    eth_list = ['1', '17']
+		elif speed == '10g':
+		    is_subports = True
+		    eth_list = ['3']
+		elif speed == '25g':
+		    is_subports = True
+		    eth_list = ['5']
+		elif speed == '50g':
+		    is_subports = True
+		    is_lane2_count2 = True
+		    eth_list = ['7']
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+	    if is_subports:
+            	if not is_lane2_count2:
+                	subport = ['1', '2', '3', '4']
+            	else:
+                	subport = ['1', '2']
+            else:
+            	subport = '1'
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'a')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+            for eth in eth_list:
+		    ind = eth_list.index(eth)
+		    last_octet = eth_ips_last_octet[ind]
+		    if is_subports:
+			for port in subport:
+			    cmd = 'iperf -c 10.{}.{}.{} -t 2 -P 1'.format(eth, port, last_octet)
+			    execute_commands(module, cmd)
+		    else:
+			cmd = 'iperf -c 10.0.{}.{} -t 2 -P 1'.format(eth, last_octet)
+			execute_commands(module, cmd)
+            for key, value in HASH_DICT.iteritems():
+            	cmds_list.append(key)
+            # Exit the module and return the required JSON.
+            module.exit_json(cmds=cmds_list)
+ 
+    else:
+	    # Verify iperf traffic
+	    verify_traffic(module)
 
-    log_file.close()
+	    # Calculate the entire test result
+	    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+	    # Create a log file
+	    log_file_path = module.params['log_dir_path']
+	    log_file_path += '/{}.log'.format(module.params['hash_name'])
+	    log_file = open(log_file_path, 'a')
+	    for key, value in HASH_DICT.iteritems():
+		log_file.write(key)
+		log_file.write('\n')
+		log_file.write(str(value))
+		log_file.write('\n')
+		log_file.write('\n')
+
+	    log_file.close()
+
+	    # Exit the module and return the required JSON.
+	    module.exit_json(
+		hash_dict=HASH_DICT,
+		log_file_path=log_file_path
+	    )
 
 
 if __name__ == '__main__':

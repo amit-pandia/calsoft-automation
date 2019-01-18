@@ -154,7 +154,7 @@ def verify_routes(module, dummy_interfaces_list):
     global RESULT_STATUS
     failure_summary = ''
     switch_name = module.params['switch_name']
-
+    time.sleep(int(module.params['delay']))
     cmd = 'birdc show route'
     all_routes = execute_commands(module, cmd)
 

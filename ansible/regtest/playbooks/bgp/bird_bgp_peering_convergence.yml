@@ -63,6 +63,8 @@
     - name: Verify bird bgp peering convergence
       test_bird_peering_state_propagation:
         switch_name: "{{ inventory_hostname }}"
+        delay: "{{ package_delay }}"
+        retries: "{{ package_retry }}"
         package_name: "bird"
         is_convergence: True
         spine_list: "{{ groups['spine'] }}"

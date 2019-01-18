@@ -189,7 +189,6 @@ def main():
 
     if module.params['dry_run_mode']:
         port = 5000
-        package_name = module.params['package_name']
         packet_size_list = module.params['packet_size_list'].split(',')
         cmds_list = []
 

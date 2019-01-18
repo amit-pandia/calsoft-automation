@@ -6,9 +6,11 @@
   tasks:
     - shell: dpkg --list | grep kernel
       register: kernel_version
+      when: not dry_run
 
     - debug:
         var: kernel_version.stdout_lines
+      when: not dry_run
 
 
 - hosts: server_emulator
@@ -29,34 +31,71 @@
     - file:
         path: "{{ port_provision_log_dir }}"
         state: directory
+      when: not dry_run
 
     - name: Copy port provisioned interfaces_100g_cr_fec_cl91_autoneg_off_lanes_4_count_1 file to /etc/network/interfaces
       template:
         src: "../../files/{{inventory_hostname}}/network_interfaces_master"
         dest: "{{ network_interfaces_file }}"
+      when: not dry_run
 
     - name: Copy goesd-platina-mk1-modprobe.conf file
       template:
         src: "../../files/goesd-platina-mk1-modprobe.conf"
         dest: "{{ goesd_modprobe_file }}"
+      when: not dry_run
+
+    - name: Update interfaces file for fiber ports
+      test_fiber_ports:
+        cmd : "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1"
+      register: fmodule_out
 
     - name: Execute commands
       command: "{{ item }}"
       with_items:
       - 'rmmod platina-mk1'
-      - 'modprobe platina-mk1 provision=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1'
-      - 'goes restart'
+      - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
       - 'ifdown -a --allow vnet'
       - 'ifup -a --allow vnet'
+      - 'goes restart'
+      when: not dry_run
 
-#    - name: Restart networking service
-#      service:
-#        name: networking
-#        state: restarted
+    - set_fact:
+        commands: "{{ item }}"
+      with_items:
+      - 'rmmod platina-mk1'
+      - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
+      - 'ifdown -a --allow vnet'
+      - 'ifup -a --allow vnet'
+      - 'goes restart'
+      when: dry_run
 
     - name: Wait few seconds for GOES to come up
       pause:
-        seconds: 5
+        seconds: 10
+      when: not dry_run
+
+    - name: Goes status
+      command: goes status
+      register: result
+      retries: "{{ goes_retry }}"
+      delay: "{{ goes_delay }}"
+      until: result.rc == 0
+      when: not dry_run
+
+    - name: Verify media, speed and fec values
+      test_port_links:
+        switch_name: "{{ inventory_hostname }}"
+        speed: "100g"
+        media: "copper"
+        fec: "cl91"
+        f_ports: "{{ fmodule_out.hash_dict['eth_list'] }}"
+        autoneg: "off"
+        platina_redis_channel: "{{ platina_redis_channel }}"
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        log_dir_path: "{{ port_provision_log_dir }}"
+      register: module_out
+      when: not dry_run
 
     - name: Verify media, speed and fec values
       test_port_links:
@@ -68,15 +107,24 @@
         platina_redis_channel: "{{ platina_redis_channel }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ port_provision_log_dir }}"
-      register: module_out
+        dry_run_mode: "{{ dry_run }}"
+      register: dry_run_out
+      delegate_to: 127.0.0.1
+      when: dry_run
+
+    - set_fact:
+        dry_run_cmds: "{{ dry_run_out.cmds }}"
+      when: dry_run
 
     - command: "date +%Y%m%d%T"
       register: end_time
+      when: not dry_run
 
     - name: Fetch the log file
       slurp:
         src: "{{ module_out.log_file_path }}"
       register: logs
+      when: not dry_run
 
     - name: Store the test result in a hash in redis db on server emulator
       store_result_in_redis:
@@ -86,6 +134,8 @@
         hash_dict: "{{ module_out.hash_dict }}"
         log_content: "{{ logs['content'] | b64decode }}"
       delegate_to: 127.0.0.1
+      ignore_errors: yes
+      when: not dry_run
 
 
 - hosts: spine
@@ -93,6 +143,11 @@
   tasks:
     - name: Initiate iperf servers
       shell: "iperf -s &"
+      when: not dry_run
+
+    - set_fact:
+        iperf_cmd: "iperf -s &"
+      when: dry_run
 
 
 - hosts: leaf[0]
@@ -101,19 +156,39 @@
     - name: Initiate iperf client and verify traffic
       verify_iperf_traffic:
         switch_name: "{{ inventory_hostname }}"
+        f_ports: "{{ fmodule_out.hash_dict['eth_list'] }}"
         eth_ips_last_octet: "31,32"
         is_subports: False
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ port_provision_log_dir }}"
       register: module_out
+      when: not dry_run
+
+    - name: Initiate iperf client and verify traffic
+      verify_iperf_traffic:
+        switch_name: "{{ inventory_hostname }}"
+        eth_ips_last_octet: "31,32"
+        is_subports: False
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        log_dir_path: "{{ port_provision_log_dir }}"
+        dry_run_mode: "{{ dry_run }}"
+      register: idry_run_out
+      delegate_to: 127.0.0.1
+      when: dry_run
+
+    - set_fact:
+        idry_run_cmds: "{{ idry_run_out.cmds }}"
+      when: dry_run
 
     - command: "date +%Y%m%d%T"
       register: end_time
+      when: not dry_run
 
     - name: Fetch the log file
       slurp:
         src: "{{ module_out.log_file_path }}"
       register: logs
+      when: not dry_run
 
     - name: Store the test result in a hash in redis db on server emulator
       store_result_in_redis:
@@ -123,10 +198,14 @@
         hash_dict: "{{ module_out.hash_dict }}"
         log_content: "{{ logs['content'] | b64decode }}"
       delegate_to: 127.0.0.1
+      ignore_errors: yes
+      when: not dry_run
 
 
 - include: port_provision_reset.yml
-  when: reset_config
+  when: 
+    - reset_config
+    - not dry_run
 
 
 - hosts: server_emulator
@@ -136,21 +215,65 @@
       get_test_result_from_redis:
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
       register: result
+      when: not dry_run
 
     - name: Print test case result
       debug:
         msg: "Test case result: {{ result.result_status }}"
+      when: not dry_run
 
     - name: Print failure summary
       debug:
         msg: "Failure summary: {{ result.result_detail }}"
+      when: not dry_run
 
     - lineinfile:
         path: "{{ regression_summary_report }}"
         line: "{{ hash_name }}: {{ result.result_status }}"
-
+      when: not dry_run
+ 
 
 - hosts: leaf:spine
   become: true
+  vars:
+    interfaces_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/network_interfaces_master') }}"
+    modeprobe_file: "{{ lookup('file', '../../files/goesd-platina-mk1-modprobe.conf') }}"
   tasks:
     - include: ../../playbooks/get_goes_status.yml start_time={{ hostvars['server_emulator']['start_time'] }} hash_name={{ hostvars['server_emulator']['hash_name'] }}
+      when: not dry_run
+
+    - name: Print interfaces file
+      debug:
+        var: interfaces_file
+      when: dry_run
+      delegate_to: 127.0.0.1
+
+    - name: Print modeprobe.config
+      debug:
+        var: modeprobe_file
+      when: dry_run
+      delegate_to: 127.0.0.1
+
+    - name: Print commands executed
+      debug:
+        var: commands
+      when: dry_run
+      delegate_to: 127.0.0.1
+
+    - name: Print dry run commands
+      debug:
+        var: dry_run_cmds
+      delegate_to: 127.0.0.1
+      when: dry_run
+
+    - name: Print iperf command
+      debug:
+        var: iperf_cmd
+      delegate_to: 127.0.0.1
+      when: dry_run
+
+    - name: Print iperf check commands
+      debug:
+        var: idry_run_cmds
+      delegate_to: 127.0.0.1
+      when: dry_run

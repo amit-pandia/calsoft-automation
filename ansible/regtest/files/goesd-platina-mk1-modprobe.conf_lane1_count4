@@ -7,4 +7,3 @@
 #
 options i2c_i801 disable_features=0x10
 options platina-mk1 provision=4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1
-
