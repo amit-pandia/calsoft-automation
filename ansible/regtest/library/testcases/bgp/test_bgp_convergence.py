@@ -108,7 +108,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -121,6 +121,70 @@ def execute_commands(module, cmd):
 
     return out
 
+def verify_ip_routes(module):
+
+    switch_name = module.params['switch_name']
+    converge_switch = module.params['converge_switch']
+    converge_switch_config = module.params['converge_switch_config']
+
+    global RESULT_STATUS
+    failure_summary = ''
+    cmd = "vtysh -c 'sh ip route'"
+    routes_out = execute_commands(module, cmd)
+
+    if routes_out:
+        route = 'B>* 192.168.{}.1'.format(converge_switch[-2::])
+
+        if route in routes_out and converge_switch_config == 'absent':
+            RESULT_STATUS = False
+            failure_summary += 'On Switch {} bgp route '.format(switch_name)
+            failure_summary += 'for network {} is present '.format(route)
+            failure_summary += 'in the output of command {} '.format(cmd)
+            failure_summary += 'even after removing this network\n'
+
+        elif route not in routes_out and converge_switch_config == 'present':
+            RESULT_STATUS = False
+            failure_summary += 'On Switch {} bgp route '.format(switch_name)
+            failure_summary += 'for network {} is absent '.format(route)
+            failure_summary += 'in the output of command {} '.format(cmd)
+            failure_summary += 'even after presence of this network\n'
+
+    else:
+        RESULT_STATUS = False
+        failure_summary += 'On switch {} '.format(switch_name)
+        failure_summary += 'bgp convergence cannot be verified '
+        failure_summary += 'because output of command {} is None'.format(cmd)
+
+    alist = [True if RESULT_STATUS else False]
+    alist.append(failure_summary)
+    return alist
+
+def verify_ping(module):
+
+    global RESULT_STATUS
+    failure_summary = ''
+    switch_name = module.params['switch_name']
+    converge_switch = module.params['converge_switch']
+    converge_switch_config = module.params['converge_switch_config']
+    is_ping = module.params['is_ping']
+
+    if is_ping and converge_switch_config == 'present':
+        packet_count = 5
+        cmd = "ping -c {} -I 192.168.{}.1 192.168.{}.1".format(packet_count, switch_name[-2:], converge_switch[-2:])
+
+        ping_out = execute_commands(module, cmd)
+
+        if '100% packet loss' in ping_out:
+            RESULT_STATUS = False
+            failure_summary += 'Ping from switch {} to {}'.format(switch_name, converge_switch)
+            failure_summary += ' for {} packets'.format(packet_count)
+            failure_summary += ' are not received in the output of '
+            failure_summary += 'command {}\n'.format(cmd)
+
+    alist = [True if RESULT_STATUS else False]
+    alist.append(failure_summary)
+    return alist
+
 
 def verify_bgp_quagga_convergence(module):
     """
@@ -128,17 +192,11 @@ def verify_bgp_quagga_convergence(module):
     :param module: The Ansible module to fetch input parameters.
     """
     global RESULT_STATUS, HASH_DICT
-    failure_summary = ''
     switch_name = module.params['switch_name']
     package_name = module.params['package_name']
     converge_switch = module.params['converge_switch']
-    converge_switch_config = module.params['converge_switch_config']
-    spine_list = module.params['spine_list']
-    leaf_list = module.params['leaf_list']
-    is_ping = module.params['is_ping']
-
-    leaf_list1 = leaf_list[:]
-    spine_list1 = spine_list[:]
+    delay = module.params['delay']
+    retries = module.params['retries']
 
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
@@ -148,47 +206,24 @@ def verify_bgp_quagga_convergence(module):
 
     if switch_name != converge_switch:
         # Get all ip routes
-        cmd = "vtysh -c 'sh ip route'"
-        routes_out = execute_commands(module, cmd)
+        retry = retries - 1
+        found_list = [False, False]
+        while(retry):
+            if not found_list[0]:
+                if verify_ip_routes(module)[0]:
+                    found_list[0] = True
 
-        if routes_out:
-            route = 'B>* 192.168.{}.1'.format(converge_switch[-2::])
+            if not found_list[1]:
+                if verify_ping(module)[0]:
+                    found_list[1] = True
 
-            if route in routes_out and converge_switch_config == 'absent':
-                RESULT_STATUS = False
-                failure_summary += 'On Switch {} bgp route '.format(switch_name)
-                failure_summary += 'for network {} is present '.format(route)
-                failure_summary += 'in the output of command {} '.format(cmd)
-                failure_summary += 'even after removing this network\n'
+            if all(found_list):
+                break
+            else:
+                time.sleep(delay)
+                retry -= 1
 
-            elif route not in routes_out and converge_switch_config == 'present':
-		RESULT_STATUS = False
-		failure_summary += 'On Switch {} bgp route '.format(switch_name)
-                failure_summary += 'for network {} is absent '.format(route)
-                failure_summary += 'in the output of command {} '.format(cmd)
-                failure_summary += 'even after presence of this network\n'	
-
-        else:
-            RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'bgp convergence cannot be verified '
-            failure_summary += 'because output of command {} is None'.format(cmd)
-
-        if is_ping and converge_switch_config == 'present':
-		packet_count = 5
-		cmd = "ping -c {} -I 192.168.{}.1 192.168.{}.1".format(packet_count, switch_name[-2:], converge_switch[-2:])
-
-		ping_out = execute_commands(module, cmd)
-
-		if '100% packet loss' in ping_out:
-		    RESULT_STATUS = False
-		    failure_summary += 'Ping from switch {} to {}'.format(switch_name, converge_switch)
-		    failure_summary += ' for {} packets'.format(packet_count)
-		    failure_summary += ' are not received in the output of '
-		    failure_summary += 'command {}\n'.format(cmd)
-
-
-    HASH_DICT['result.detail'] = failure_summary
+    HASH_DICT['result.detail'] = verify_ip_routes(module)[1] + verify_ping(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
@@ -199,8 +234,11 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
-	    spine_list=dict(required=False, type='list', default=[]),
+	        spine_list=dict(required=False, type='list', default=[]),
             leaf_list=dict(required=False, type='list', default=[]),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             is_ping=dict(required=False, type='bool'),
             converge_switch=dict(required=False, type='str'),
             converge_switch_config=dict(required=False, type='str'),
@@ -212,29 +250,69 @@ def main():
 
     global HASH_DICT, RESULT_STATUS
 
-    verify_bgp_quagga_convergence(module)
+    if module.params['dry_run_mode']:
+        cmds_list = []
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        switch_name = module.params['switch_name']
+        package_name = module.params['package_name']
+        converge_switch = module.params['converge_switch']
+        converge_switch_config = module.params['converge_switch_config']
+        spine_list = module.params['spine_list']
+        leaf_list = module.params['leaf_list']
+        is_ping = module.params['is_ping']
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        # Get the current/running configurations
+        execute_commands(module, "vtysh -c 'sh running-config'")
 
-    log_file.close()
+        # Check package status
+        execute_commands(module, 'service {} status'.format(package_name))
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        if switch_name != converge_switch:
+            # Get all ip routes
+            cmd = "vtysh -c 'sh ip route'"
+            execute_commands(module, cmd)
+
+            if is_ping and converge_switch_config == 'present':
+                packet_count = 5
+                cmd = "ping -c {} -I 192.168.{}.1 192.168.{}.1".format(packet_count, switch_name[-2:],
+                                                                       converge_switch[-2:])
+                execute_commands(module, cmd)
+
+        # Get the GOES status info
+        execute_commands(module, 'goes status')
+
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+
+        verify_bgp_quagga_convergence(module)
+
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 if __name__ == '__main__':
     main()

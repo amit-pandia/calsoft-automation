@@ -20,6 +20,8 @@
 
 import shlex
 
+import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -106,7 +108,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'dummy' in cmd or 'restart' in cmd:
+    if 'dummy' in cmd or 'restart' in cmd or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -119,36 +121,12 @@ def execute_commands(module, cmd):
 
     return out
 
-
-def verify_bgp_peering_loopback(module):
-    """
-    Method to verify bgp peering loopback config.
-    :param module: The Ansible module to fetch input parameters.
-    """
+def verify_bgp_loopback(module):
     global RESULT_STATUS, HASH_DICT
-    failure_summary = ''
     neighbor_count = 0
+    failure_summary = ''
     switch_name = module.params['switch_name']
-    package_name = module.params['package_name']
     config_file = module.params['config_file'].splitlines()
-
-    # Add dummy0 interface
-    execute_commands(module, 'ip link add dummy0 type dummy')
-
-    # Assign ip to this created dummy0 interface
-    cmd = 'ifconfig dummy0 192.168.{}.1 netmask 255.255.255.255'.format(
-        switch_name[-2::]
-    )
-    execute_commands(module, cmd)
-
-    # Get the current/running configurations
-    execute_commands(module, "vtysh -c 'sh running-config'")
-
-    # Restart and check package status
-    execute_commands(module, 'service {} restart'.format(package_name))
-    execute_commands(module, 'service {} status'.format(package_name))
-
-    # Get all bgp routes
     cmd = "vtysh -c 'sh ip bgp neighbors'"
     bgp_out = execute_commands(module, cmd)
 
@@ -180,7 +158,45 @@ def verify_bgp_peering_loopback(module):
         failure_summary += 'because output of command {} '.format(cmd)
         failure_summary += 'is None'
 
-    HASH_DICT['result.detail'] = failure_summary
+    alist = [True if RESULT_STATUS else False]
+    alist.append(failure_summary)
+    return alist
+
+def verify_bgp_peering_loopback(module):
+    """
+    Method to verify bgp peering loopback config.
+    :param module: The Ansible module to fetch input parameters.
+    """
+    global RESULT_STATUS, HASH_DICT
+    switch_name = module.params['switch_name']
+    package_name = module.params['package_name']
+    delay = module.params['delay']
+    retries = module.params['retries']
+    # Add dummy0 interface
+    execute_commands(module, 'ip link add dummy0 type dummy')
+
+    # Assign ip to this created dummy0 interface
+    cmd = 'ifconfig dummy0 192.168.{}.1 netmask 255.255.255.255'.format(
+        switch_name[-2::]
+    )
+    execute_commands(module, cmd)
+
+    # Get the current/running configurations
+    execute_commands(module, "vtysh -c 'sh running-config'")
+
+    # Restart and check package status
+    execute_commands(module, 'service {} restart'.format(package_name))
+    execute_commands(module, 'service {} status'.format(package_name))
+
+    # Get all bgp routes
+    retry = retries - 1
+    while(retry):
+        if verify_bgp_loopback(module)[0]:
+            break
+        time.sleep(delay)
+        retry -= 1
+
+    HASH_DICT['result.detail'] = verify_bgp_loopback(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
@@ -195,34 +211,65 @@ def main():
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
+    if module.params['dry_run_mode']:
+        package_name = module.params['package_name']
+        cmds_list = []
+        switch_name = module.params['switch_name']
+        execute_commands(module, 'ip link add dummy0 type dummy')
 
-    verify_bgp_peering_loopback(module)
+        # Assign ip to this created dummy0 interface
+        cmd = 'ifconfig dummy0 192.168.{}.1 netmask 255.255.255.255'.format(
+            switch_name[-2::]
+        )
+        execute_commands(module, cmd)
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        # Get the current/running configurations
+        execute_commands(module, "vtysh -c 'sh running-config'")
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        # Restart and check package status
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
+        cmd = "vtysh -c 'sh ip bgp neighbors'"
+        execute_commands(module, cmd)
+        execute_commands(module, 'goes status')
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
 
-    log_file.close()
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+        verify_bgp_peering_loopback(module)
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 if __name__ == '__main__':
     main()

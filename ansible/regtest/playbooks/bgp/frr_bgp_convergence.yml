@@ -57,13 +57,6 @@
         state: restarted
       when: not dry_run
 
-    - command: service frr status
-      retries: "{{ package_retry }}"
-      delay: "{{ package_delay }}"
-      register: result
-      until: result.rc == 0
-      when: not dry_run
-
     - file:
         path: "{{ bgp_log_dir }}"
         state: directory
@@ -84,13 +77,6 @@
       service:
         name: frr
         state: restarted
-
-    - command: service frr status
-      retries: "{{ package_retry }}"
-      delay: "{{ package_delay }}"
-      register: result
-      until: result.rc == 0
-      when: not dry_run
 
 
 - hosts: leaf:spine
@@ -141,12 +127,6 @@
         name: frr
         state: restarted
 
-    - command: service frr status
-      retries: "{{ package_retry }}"
-      delay: "{{ package_delay }}"
-      register: result
-      until: result.rc == 0
-      when: not dry_run
 
 - hosts: leaf:spine
   become: true
@@ -176,6 +156,7 @@
         package_name: "frr"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ bgp_log_dir }}"
+        dry_run_mode: "{{ dry_run }}"
       register: dry_run_out
       delegate_to: 127.0.0.1
       when: dry_run
