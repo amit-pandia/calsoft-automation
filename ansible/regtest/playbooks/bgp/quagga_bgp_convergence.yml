@@ -80,7 +80,7 @@
       when: not dry_run
 
 
-- hosts: leaf:spine
+- hosts: leaf[1]:spine
   become: true
   tasks:
     - name: Verify bgp quagga convergence
@@ -127,7 +127,7 @@
       when: not dry_run
 
 
-- hosts: leaf:spine
+- hosts: leaf[1]:spine
   become: true
   tasks:
     - name: Verify bgp quagga convergence

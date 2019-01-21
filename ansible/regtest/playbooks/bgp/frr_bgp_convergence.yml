@@ -79,7 +79,7 @@
         state: restarted
 
 
-- hosts: leaf:spine
+- hosts: leaf[1]:spine
   become: true
   tasks:
     - name: Verify bgp frr convergence
@@ -128,7 +128,7 @@
         state: restarted
 
 
-- hosts: leaf:spine
+- hosts: leaf[1]:spine
   become: true
   tasks:
     - name: Verify bgp frr convergence
