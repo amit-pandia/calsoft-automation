@@ -20,6 +20,8 @@
 
 import shlex
 
+import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -121,7 +123,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -134,33 +136,15 @@ def execute_commands(module, cmd):
 
     return out
 
-
-def verify_bgp_route_advertise(module):
-    """
-    Method to verify bgp route advertise.
-    :param module: The Ansible module to fetch input parameters.
-    """
-    global RESULT_STATUS, HASH_DICT
-    failure_summary = ''
+def verify_route_advertise(module):
     routes_to_check = []
     switch_name = module.params['switch_name']
-    package_name = module.params['package_name']
     is_ibgp = module.params['is_ibgp']
     spine_list = module.params['spine_list']
     leaf_list = module.params['leaf_list']
-    is_ping = module.params['is_ping']
 
-    leaf_list1 = leaf_list[:]
-    spine_list1 = spine_list[:]
-
-    # Get the current/running configurations
-    execute_commands(module, "vtysh -c 'sh running-config'")
-
-    # Restart and check package status
-    # execute_commands(module, 'service {} restart'.format(package_name))
-    execute_commands(module, 'service {} status'.format(package_name))
-
-    # Get all bgp routes
+    global RESULT_STATUS, HASH_DICT
+    failure_summary = ''
     cmd = "vtysh -c 'sh ip bgp'"
     bgp_out = execute_commands(module, cmd)
 
@@ -189,10 +173,21 @@ def verify_bgp_route_advertise(module):
         failure_summary += 'because output of command {} '.format(cmd)
         failure_summary += 'is None'
 
+    alist = [True if RESULT_STATUS else False]
+    alist.append(failure_summary)
+    return alist
+
+def verify_ping(module):
+    switch_name = module.params['switch_name']
+
+    is_ping = module.params['is_ping']
+    leaf_list1 = module.params['leaf_list'][:]
+    spine_list1 = module.params['spine_list'][:]
+    global RESULT_STATUS, HASH_DICT
+    failure_summary = ''
     if is_ping:
         packet_count = 5
         if switch_name in leaf_list1:
-                aleaf = True
                 p_list = leaf_list1
         elif switch_name in spine_list1:
                 p_list = spine_list1
@@ -209,8 +204,47 @@ def verify_bgp_route_advertise(module):
             failure_summary += ' are not received in the output of '
             failure_summary += 'command {}\n'.format(cmd)
 
+    alist = [True if RESULT_STATUS else False]
+    alist.append(failure_summary)
+    return alist
+
+def verify_bgp_route_advertise(module):
+    """
+    Method to verify bgp route advertise.
+    :param module: The Ansible module to fetch input parameters.
+    """
+    global RESULT_STATUS, HASH_DICT
+    package_name = module.params['package_name']
+    delay = module.params['delay']
+    retries = module.params['retries']
+
+    # Get the current/running configurations
+    execute_commands(module, "vtysh -c 'sh running-config'")
+
+    # Restart and check package status
+    # execute_commands(module, 'service {} restart'.format(package_name))
+    execute_commands(module, 'service {} status'.format(package_name))
+
+    # Get all bgp routes
+    retry = retries - 1
+    found_list = [False, False]
+    while(retry):
+        if not found_list[0]:
+            if verify_route_advertise(module)[0]:
+                found_list[0] = True
+
+        if not found_list[1]:
+            if verify_ping(module)[0]:
+                found_list[1] = True
+
+        if all(found_list):
+            break
+        else:
+            time.sleep(delay)
+            retry -= 1
+
     # Store the failure summary in hash
-    HASH_DICT['result.detail'] = failure_summary
+    HASH_DICT['result.detail'] = verify_route_advertise(module)[1] + verify_ping(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
@@ -224,38 +258,76 @@ def main():
             spine_list=dict(required=False, type='list', default=[]),
             leaf_list=dict(required=False, type='list', default=[]),
             is_ping=dict(required=False, type='bool'),
-	    package_name=dict(required=False, type='str'),
+	        package_name=dict(required=False, type='str'),
             is_ibgp=dict(required=False, type='bool', default=False),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
+    if module.params['dry_run_mode']:
+        switch_name = module.params['switch_name']
+        is_ping = module.params['is_ping']
+        leaf_list1 = module.params['leaf_list'][:]
+        spine_list1 = module.params['spine_list'][:]
+        package_name = module.params['package_name']
+        cmds_list = []
 
-    verify_bgp_route_advertise(module)
+        execute_commands(module, "vtysh -c 'sh running-config'")
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        # Restart and check package status
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
+        cmd = "vtysh -c 'sh ip bgp'"
+        execute_commands(module, cmd)
+        if is_ping:
+            packet_count = 5
+            if switch_name in leaf_list1:
+                p_list = leaf_list1
+            elif switch_name in spine_list1:
+                p_list = spine_list1
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+            p_list.remove(switch_name)
+            cmd = "ping -c {} -I 192.168.{}.1 192.168.{}.1".format(packet_count, switch_name[-2:], p_list[0][-2:])
 
-    log_file.close()
+            execute_commands(module, cmd)
+        execute_commands(module, 'goes status')
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+        verify_bgp_route_advertise(module)
+
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 if __name__ == '__main__':
     main()

@@ -20,6 +20,8 @@
 
 import shlex
 
+import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -101,7 +103,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if 'service' in cmd and 'restart' in cmd or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -115,25 +117,10 @@ def execute_commands(module, cmd):
     return out
 
 
-def verify_bgp_peering_consistency(module):
-    """
-    Method to verify bgp peering consistency.
-    :param module: The Ansible module to fetch input parameters.
-    """
+def verify_bgp_consistency(module):
     global RESULT_STATUS, HASH_DICT
-    failure_summary = ''
     switch_name = module.params['switch_name']
-    package_name = module.params['package_name']
     values_to_check = ['10.0.1.0', 'xeth1']
-
-    # Get the current/running configurations
-    execute_commands(module, "vtysh -c 'sh running-config'")
-
-    # Restart and check package status
-    execute_commands(module, 'service {} restart'.format(package_name))
-    execute_commands(module, 'service {} status'.format(package_name))
-
-    # Get all required routes
     bgp_cmd = "vtysh -c 'sh ip route'"
     route_cmd = 'route'
     fib_cmd = 'goes vnet show ip fib'
@@ -156,7 +143,39 @@ def verify_bgp_peering_consistency(module):
         failure_summary += 'since output of one the these command is None '
         failure_summary += '{} {} {}\n'.format(bgp_cmd, route_cmd, fib_cmd)
 
-    HASH_DICT['result.detail'] = failure_summary
+    alist = [True if RESULT_STATUS else False]
+    alist.append(failure_summary)
+    return alist
+
+
+def verify_bgp_peering_consistency(module):
+    """
+    Method to verify bgp peering consistency.
+    :param module: The Ansible module to fetch input parameters.
+    """
+    global RESULT_STATUS, HASH_DICT
+
+    package_name = module.params['package_name']
+    delay = module.params['delay']
+    retries = module.params['retries']
+
+    # Get the current/running configurations
+    execute_commands(module, "vtysh -c 'sh running-config'")
+
+    # Restart and check package status
+    execute_commands(module, 'service {} restart'.format(package_name))
+    execute_commands(module, 'service {} status'.format(package_name))
+
+    # Get all required routes
+    retry = retries - 1
+    while(retry):
+        if verify_bgp_consistency(module)[0]:
+            break
+        else:
+            time.sleep(delay)
+            retry -= 1
+
+    HASH_DICT['result.detail'] = verify_bgp_consistency(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
@@ -170,34 +189,60 @@ def main():
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
+    if module.params['dry_run_mode']:
+        package_name = module.params['package_name']
+        cmds_list = []
 
-    verify_bgp_peering_consistency(module)
+        execute_commands(module, "vtysh -c 'sh running-config'")
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        # Restart and check package status
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
+        bgp_cmd = "vtysh -c 'sh ip route'"
+        route_cmd = 'route'
+        fib_cmd = 'goes vnet show ip fib'
+        execute_commands(module, bgp_cmd)
+        execute_commands(module, route_cmd)
+        execute_commands(module, fib_cmd)
+        execute_commands(module, 'goes status')
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+        verify_bgp_peering_consistency(module)
 
-    log_file.close()
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 if __name__ == '__main__':
     main()

@@ -118,7 +118,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if 'service' in cmd and 'restart' in cmd or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -143,6 +143,8 @@ def verify_bgp_loop_prevention(module):
     package_name = module.params['package_name']
     log_file = module.params['log_file']
     leaf_list = module.params['leaf_list']
+    delay = module.params['delay']
+    retries = module.params['retries']
 
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
@@ -202,6 +204,9 @@ def main():
             hash_name=dict(required=False, type='str'),
             log_file=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )
 
