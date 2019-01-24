@@ -124,7 +124,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'dummy' in cmd or 'restart' in cmd:
+    if 'dummy' in cmd or 'restart' in cmd or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -145,7 +145,7 @@ def check_bgp_neighbors(module):
     """
     global RESULT_STATUS, HASH_DICT
     neighbor_count = 0
-    failure_summary = HASH_DICT.get('result.detail', '')
+    failure_summary = ''
     switch_name = module.params['switch_name']
     config_file = module.params['config_file'].splitlines()
 
@@ -181,7 +181,9 @@ def check_bgp_neighbors(module):
         failure_summary += 'because output of command {} '.format(cmd)
         failure_summary += 'is None'
 
-    HASH_DICT['result.detail'] = failure_summary
+    alist = [True if RESULT_STATUS else False]
+    alist.append(failure_summary)
+    return alist
 
 
 def verify_ping(module, self_ip, neighbor_ip):
@@ -192,7 +194,7 @@ def verify_ping(module, self_ip, neighbor_ip):
     :param neighbor_ip: Destination ip to ping.
     """
     global RESULT_STATUS, HASH_DICT
-    failure_summary = HASH_DICT.get('result.detail', '')
+    failure_summary = ''
     switch_name = module.params['switch_name']
     packet_count = '3'
 
@@ -205,7 +207,9 @@ def verify_ping(module, self_ip, neighbor_ip):
         failure_summary += 'neighbor ip {} '.format(neighbor_ip)
         failure_summary += 'is not getting pinged\n'
 
-    HASH_DICT['result.detail'] = failure_summary
+    alist = [True if RESULT_STATUS else False]
+    alist.append(failure_summary)
+    return alist
 
 
 def verify_bgp_peering_interface_down(module):
@@ -215,6 +219,8 @@ def verify_bgp_peering_interface_down(module):
     """
     global RESULT_STATUS, HASH_DICT
     switch_name = module.params['switch_name']
+    delay = module.params['delay']
+    retries = module.params['retries']
     package_name = module.params['package_name']
     check_ping = module.params['check_ping']
     eth_list = module.params['eth_list'].split(',')
@@ -244,14 +250,29 @@ def verify_bgp_peering_interface_down(module):
     execute_commands(module, 'service {} status'.format(package_name))
 
     # Check and verify BGP neighbor relationship
-    check_bgp_neighbors(module)
+    retry = retries - 1
+    found_list = [False, False]
+    while(retry):
+        if not found_list[0]:
+            if check_bgp_neighbors(module)[0]:
+                found_list[0] = True
 
-    # Verify ping
-    if check_ping and is_leaf:
-        verify_ping(module, self_ip, neighbor_ip)
+        if not found_list[1]:
+            # Verify ping
+            if check_ping and is_leaf:
+                if verify_ping(module, self_ip, neighbor_ip)[0]:
+                    found_list[1] = True
+
+        if all(found_list):
+            break
+        else:
+            time.sleep(delay)
+            retry -= 1
+
+    HASH_DICT['result.detail'] = check_bgp_neighbors(module)[1] + verify_ping(module, self_ip, neighbor_ip)[1]
 
     # Wait for 3 seconds
-    time.sleep(3)
+    time.sleep(delay)
 
     # Bring down few eth interfaces on only leaf switches
     if is_leaf:
@@ -261,11 +282,23 @@ def verify_bgp_peering_interface_down(module):
             execute_commands(module, cmd)
 
     # Wait for 5 seconds
-    time.sleep(5)
+    time.sleep(delay)
 
     # Again check and verify BGP neighbor relationship
-    check_bgp_neighbors(module)
+    retry = retries - 1
+    found_list = [False]
+    while (retry):
+        if not found_list[0]:
+            if check_bgp_neighbors(module)[0]:
+                found_list[0] = True
 
+        if all(found_list):
+            break
+        else:
+            time.sleep(delay)
+            retry -= 1
+
+    HASH_DICT['result.detail'] = HASH_DICT['result.detail'] + check_bgp_neighbors(module)[1]
     # Verify ping
     # if check_ping and is_leaf:
     #    verify_ping(module, self_ip, neighbor_ip)
@@ -278,14 +311,29 @@ def verify_bgp_peering_interface_down(module):
             execute_commands(module, cmd)
 
     # Wait for 5 seconds
-    time.sleep(5)
+    time.sleep(delay)
 
     # Again check and verify BGP neighbor relationship
-    check_bgp_neighbors(module)
+    retry = retries - 1
+    found_list = [False, False]
+    while (retry):
+        if not found_list[0]:
+            if check_bgp_neighbors(module)[0]:
+                found_list[0] = True
 
-    # Verify ping
-    if check_ping and is_leaf:
-        verify_ping(module, self_ip, neighbor_ip)
+        if not found_list[1]:
+            # Verify ping
+            if check_ping and is_leaf:
+                if verify_ping(module, self_ip, neighbor_ip)[0]:
+                    found_list[1] = True
+
+        if all(found_list):
+            break
+        else:
+            time.sleep(delay)
+            retry -= 1
+
+    HASH_DICT['result.detail'] = HASH_DICT['result.detail'] + check_bgp_neighbors(module)[1] + verify_ping(module, self_ip, neighbor_ip)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
@@ -303,34 +351,98 @@ def main():
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
+    if module.params['dry_run_mode']:
+        cmds_list = []
+        switch_name = module.params['switch_name']
+        package_name = module.params['package_name']
+        self_ip = '192.168.{}.1'.format(switch_name[-2::])
+        eth_list = module.params['eth_list'].split(',')
+        leaf_list = module.params['leaf_list']
+        is_leaf = True if switch_name in leaf_list else False
+        neighbor_ip = '192.168.{}.1'.format(leaf_list[0][-2::])
 
-    verify_bgp_peering_interface_down(module)
+        execute_commands(module, 'ip link add dummy0 type dummy')
+        cmd = 'ifconfig dummy0 192.168.{}.1 netmask 255.255.255.255'.format(
+            switch_name[-2::]
+        )
+        execute_commands(module, cmd)
+        # Get the current/running configurations
+        execute_commands(module, "vtysh -c 'sh running-config'")
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        # Restart and check package status
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        cmd = "vtysh -c 'sh ip bgp neighbors'"
+        execute_commands(module, cmd)
 
-    log_file.close()
+        packet_count = '3'
+        ping_cmd = 'ping -w 3 -c {} -I {} {}'.format(packet_count,
+                                                     self_ip, neighbor_ip)
+        execute_commands(module, ping_cmd)
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        if is_leaf:
+            for eth in eth_list:
+                eth = eth.strip()
+                cmd = 'ifconfig xeth{} down'.format(eth)
+                execute_commands(module, cmd)
+
+        cmd = "vtysh -c 'sh ip bgp neighbors'"
+        execute_commands(module, cmd)
+
+        if is_leaf:
+            for eth in eth_list:
+                eth = eth.strip()
+                cmd = 'ifconfig xeth{} up'.format(eth)
+                execute_commands(module, cmd)
+
+        cmd = "vtysh -c 'sh ip bgp neighbors'"
+        execute_commands(module, cmd)
+
+        packet_count = '3'
+        ping_cmd = 'ping -w 3 -c {} -I {} {}'.format(packet_count,
+                                                     self_ip, neighbor_ip)
+        execute_commands(module, ping_cmd)
+        execute_commands(module, 'goes status')
+
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+        verify_bgp_peering_interface_down(module)
+
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 if __name__ == '__main__':
     main()

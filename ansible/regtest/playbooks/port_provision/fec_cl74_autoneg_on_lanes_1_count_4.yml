@@ -19,8 +19,8 @@
       register: start_time
 
     - set_fact:
-        hash_name: "port_provision_fec_cl74_autoneg_on_lanes_1_count_4_{{ start_time.stdout }}"
-        start_time: "{{ start_time.stdout }}"
+       hash_name: "port_provision_fec_cl74_autoneg_on_lanes_1_count_4_{{ start_time.stdout }}"
+       start_time: "{{ start_time.stdout }}"
 
 
 - hosts: leaf:spine
@@ -40,14 +40,19 @@
         src: "../../files/goesd-platina-mk1-modprobe.conf_lane1_count4"
         dest: "{{ goesd_modprobe_file }}"
 
+    - name: Update interfaces file for fiber ports
+      test_fiber_ports:
+        cmd : "4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1"
+      register: fmodule_out
+
     - name: Restart goes
       command: "{{ item }}"
       with_items:
       - 'rmmod platina-mk1'
-      - 'modprobe platina-mk1 provision=4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1'
-      - 'goes restart'
+      - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
       - 'ifdown -a --allow vnet'
       - 'ifup -a --allow vnet'
+      - "goes restart"
 
 #    - name: Restart networking service
 #      service:
@@ -63,6 +68,7 @@
         switch_name: "{{ inventory_hostname }}"
         speed: "autoneg"
         media: "copper"
+        f_ports: "{{ fmodule_out.hash_dict['eth_list'] }}"
         fec: "cl74"
         autoneg: "on"
         is_subports: True
@@ -104,6 +110,7 @@
         switch_name: "{{ inventory_hostname }}"
         eth_ips_last_octet: "31,32"
         is_subports: True
+        f_ports: "{{ fmodule_out.hash_dict['eth_list'] }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ port_provision_log_dir }}"
       register: module_out

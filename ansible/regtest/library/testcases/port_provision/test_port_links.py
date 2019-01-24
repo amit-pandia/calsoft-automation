@@ -395,7 +395,7 @@ def main():
             switch_name=dict(required=False, type='str'),
             speed=dict(required=False, type='str'),
             media=dict(required=False, type='str'),
-	    f_ports=dict(required=False, type='list'),
+	    f_ports=dict(required=False, type='list', default=[]),
             fec=dict(required=False, type='str', default=''),
             autoneg=dict(required=False, type='str', default=''),
             goes_delay=dict(required=False, type='int', default=10),

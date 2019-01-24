@@ -227,7 +227,7 @@ def main():
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
             eth_ips_last_octet=dict(required=False, type='str', default=''),
-	    f_ports=dict(required=False, type="list"),
+	    f_ports=dict(required=False, type="list", default=[]),
             is_subports=dict(required=False, type='bool', default=False),
             package_delay=dict(required=False, type='int', default=10),
             dry_run_mode=dict(required=False, type='bool', default=False),

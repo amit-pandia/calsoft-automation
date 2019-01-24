@@ -129,7 +129,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if 'service' in cmd and 'restart' in cmd or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -149,6 +149,8 @@ def verify_bgp_local_pref_weight(module):
     :param module: The Ansible module to fetch input parameters.
     """
     global RESULT_STATUS, HASH_DICT
+    delay = module.params['delay']
+    retries = module.params['retries']
     failure_summary = ''
     switch_name = module.params['switch_name']
     pref_wt_switch = module.params['pref_wt_switch']
@@ -162,45 +164,55 @@ def verify_bgp_local_pref_weight(module):
     # Restart and check package status
     execute_commands(module, 'service {} restart'.format(package_name))
     execute_commands(module, 'service {} status'.format(package_name))
-
+    import time
     if switch_name == pref_wt_switch:
-        # Get all ip bgp routes
-        cmd = "vtysh -c 'sh ip bgp'"
-        out = execute_commands(module, cmd)
+        while(retries):
+		# Get all ip bgp routes
+		failure_summary = ''
+		cmd = "vtysh -c 'sh ip bgp'"
+		out = execute_commands(module, cmd)
 
-        if out:
-            for switch in spine_list + leaf_list:
-                network = '192.168.{}.1'.format(switch[-2::])
-                if network not in out:
-                    RESULT_STATUS = False
-                    failure_summary += 'On Switch {} bgp route '.format(
-                        switch_name)
-                    failure_summary += 'for network {} is not present '.format(
-                        network)
-                    failure_summary += 'in the output of command {}\n'.format(
-                        cmd)
+		if out:
+		    for switch in spine_list + leaf_list:
+			network = '192.168.{}.1'.format(switch[-2::])
+			if network not in out:
+			    RESULT_STATUS = False
+			    failure_summary += 'On Switch {} bgp route '.format(
+				switch_name)
+			    failure_summary += 'for network {} is not present '.format(
+				network)
+			    failure_summary += 'in the output of command {}\n'.format(
+				cmd)
 
-            local_pref = module.params['local_pref']
-            weight = module.params['weight']
+		    local_pref = module.params['local_pref']
+		    weight = module.params['weight']
 
-            if local_pref:
-                value = local_pref
-                name = 'local preference'
-            else:
-                value = weight
-                name = 'weight'
+		    if local_pref:
+			value = local_pref
+			name = 'local preference'
+		    else:
+			value = weight
+			name = 'weight'
 
-            if value not in out:
-                RESULT_STATUS = False
-                failure_summary += 'On Switch {} {} '.format(switch_name, name)
-                failure_summary += 'value {} is not present '.format(value)
-                failure_summary += 'in the output of command {}\n'.format(cmd)
-        else:
-            RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'result cannot be verified since '
-            failure_summary += 'output of command {} '.format(cmd)
-            failure_summary += 'is None'
+		    if value not in out:
+			RESULT_STATUS = False
+			failure_summary += 'On Switch {} {} '.format(switch_name, name)
+			failure_summary += 'value {} is not present '.format(value)
+			failure_summary += 'in the output of command {}\n'.format(cmd)
+		else:
+		    RESULT_STATUS = False
+		    failure_summary += 'On switch {} '.format(switch_name)
+		    failure_summary += 'result cannot be verified since '
+		    failure_summary += 'output of command {} '.format(cmd)
+		    failure_summary += 'is None'
+               
+                if not RESULT_STATUS: 
+			time.sleep(delay)
+			retries -= 1
+                else:
+                        break
+
+
 
     HASH_DICT['result.detail'] = failure_summary
 
@@ -215,6 +227,9 @@ def main():
             switch_name=dict(required=False, type='str'),
             local_pref=dict(required=False, type='str', default=''),
             weight=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             pref_wt_switch=dict(required=False, type='str'),
             spine_list=dict(required=False, type='list', default=[]),
             leaf_list=dict(required=False, type='list', default=[]),
@@ -226,30 +241,50 @@ def main():
 
     global HASH_DICT, RESULT_STATUS
 
-    verify_bgp_local_pref_weight(module)
+    if module.params['dry_run_mode']:
+        package_name = module.params['package_name']
+        cmds_list = []
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        execute_commands(module, "vtysh -c 'sh running-config'")
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        # Restart and check package status
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
+        cmd = "vtysh -c 'sh ip bgp'"
+        execute_commands(module, cmd)
+        execute_commands(module, 'goes status')
 
-    log_file.close()
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+        verify_bgp_local_pref_weight(module)
 
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 if __name__ == '__main__':
     main()
 

@@ -51,6 +51,10 @@
         state: restarted
       when: not dry_run
 
+    - name: Waiting for few seconds
+      pause:
+        seconds: "{{ package_delay }}"
+
     - file:
         path: "{{ bgp_log_dir }}"
         state: directory

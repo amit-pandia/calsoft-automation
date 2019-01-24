@@ -22,6 +22,8 @@ import shlex
 
 from collections import OrderedDict
 
+import time
+
 from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
@@ -126,30 +128,15 @@ def execute_commands(module, cmd):
 
     return out
 
-
-def verify_bgp_authentication(module):
-    """
-    Method to verify bgp authentication.
-    :param module: The Ansible module to fetch input parameters.
-    """
+def bgp_authentication(module):
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
     neighbor_count = 0
     switch_name = module.params['switch_name']
-    package_name = module.params['package_name']
     config_file = module.params['config_file'].splitlines()
-
-    # Get the current/running configurations
-    execute_commands(module, "vtysh -c 'sh running-config'")
-
-    # Restart and check package status
-    # execute_commands(module, 'service {} restart'.format(package_name))
-    execute_commands(module, 'service {} status'.format(package_name))
-
     # Get all ip routes
     cmd = "vtysh -c 'sh ip bgp neighbors'"
     bgp_out = execute_commands(module, cmd)
-
     if bgp_out:
         for line in config_file:
             line = line.strip()
@@ -178,7 +165,35 @@ def verify_bgp_authentication(module):
         failure_summary += 'because output of command {} '.format(cmd)
         failure_summary += 'is None'
 
-    HASH_DICT['result.detail'] = failure_summary
+    alist = [True if RESULT_STATUS else False]
+    alist.append(failure_summary)
+    return alist
+
+
+def verify_bgp_authentication(module):
+    """
+    Method to verify bgp authentication.
+    :param module: The Ansible module to fetch input parameters.
+    """
+    global RESULT_STATUS, HASH_DICT
+    package_name = module.params['package_name']
+    delay = module.params['delay']
+    retries = module.params['retries']
+
+    # Get the current/running configurations
+    execute_commands(module, "vtysh -c 'sh running-config'")
+
+    # Restart and check package status
+    # execute_commands(module, 'service {} restart'.format(package_name))
+    execute_commands(module, 'service {} status'.format(package_name))
+    retry = retries - 1
+    while(retry):
+        if bgp_authentication(module)[0]:
+            break
+        time.sleep(delay)
+        retry -= 1
+
+    HASH_DICT['result.detail'] = bgp_authentication(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
@@ -193,6 +208,8 @@ def main():
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
             dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )
@@ -210,6 +227,7 @@ def main():
         execute_commands(module, 'pause for 35 secs')
         execute_commands(module, 'service {} status'.format(package_name))
         execute_commands(module, "vtysh -c 'sh ip bgp neighbors'")
+        execute_commands(module, 'goes status')
 
         for key, value in HASH_DICT.iteritems():
             cmds_list.append(key)

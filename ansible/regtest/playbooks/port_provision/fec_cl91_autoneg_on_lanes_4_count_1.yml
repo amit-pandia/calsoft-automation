@@ -40,14 +40,19 @@
         src: "../../files/goesd-platina-mk1-modprobe.conf"
         dest: "{{ goesd_modprobe_file }}"
 
+    - name: Update interfaces file for fiber ports
+      test_fiber_ports:
+        cmd : "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1"
+      register: fmodule_out
+
     - name: Execute commands
       command: "{{ item }}"
       with_items:
       - 'rmmod platina-mk1'
-      - 'modprobe platina-mk1 provision=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1'
-      - 'goes restart'
+      - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
       - 'ifdown -a --allow vnet'
       - 'ifup -a --allow vnet'
+      - "goes restart"
 
     - name: Wait few seconds for GOES to come up
       pause:

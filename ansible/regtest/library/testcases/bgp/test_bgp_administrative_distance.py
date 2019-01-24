@@ -22,6 +22,8 @@ import shlex
 
 from collections import OrderedDict
 
+import time
+
 from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
@@ -115,7 +117,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -128,12 +130,8 @@ def execute_commands(module, cmd):
 
     return out
 
+def ip_routes(module):
 
-def verify_bgp_administrative_distance(module):
-    """
-    Method to verify bgp administrative distance.
-    :param module: The Ansible module to fetch input parameters.
-    """
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
     routes_to_check = []
@@ -148,8 +146,6 @@ def verify_bgp_administrative_distance(module):
     # Restart and check package status
     execute_commands(module, 'service {} restart'.format(package_name))
     execute_commands(module, 'service {} status'.format(package_name))
-
-    # Get all ip routes
     cmd = "vtysh -c 'sh ip route'"
     all_routes = execute_commands(module, cmd)
 
@@ -190,8 +186,36 @@ def verify_bgp_administrative_distance(module):
         failure_summary += 'because output of command {} '.format(cmd)
         failure_summary += 'is None'
 
+    alist = [True if RESULT_STATUS else False]
+    alist.append(failure_summary)
+    return alist
+
+def verify_bgp_administrative_distance(module):
+    """
+    Method to verify bgp administrative distance.
+    :param module: The Ansible module to fetch input parameters.
+    """
+    global RESULT_STATUS, HASH_DICT
+    package_name = module.params['package_name']
+    delay = module.params['delay']
+    retries = module.params['retries']
+
+    # Get the current/running configurations
+    execute_commands(module, "vtysh -c 'sh running-config'")
+
+    # Restart and check package status
+    execute_commands(module, 'service {} restart'.format(package_name))
+    execute_commands(module, 'service {} status'.format(package_name))
+
+    # Get all ip routes
+    while (retries - 1):
+        if ip_routes(module)[0]:
+            break
+        time.sleep(delay)
+        retries -= 1
+
     # Store the failure summary in hash
-    HASH_DICT['result.detail'] = failure_summary
+    HASH_DICT['result.detail'] = ip_routes(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
@@ -206,35 +230,60 @@ def main():
             leaf_list=dict(required=False, type='list', default=[]),
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             log_dir_path=dict(required=False, type='str'),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
 
-    verify_bgp_administrative_distance(module)
+    if module.params['dry_run_mode']:
+        cmds_list = []
+        package_name = module.params['package_name']
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        # Get the current/running configurations
+        execute_commands(module, "vtysh -c 'sh running-config'")
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        # Restart and check package status
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
+        cmd = "vtysh -c 'sh ip route'"
+        execute_commands(module, cmd)
+        execute_commands(module, 'goes status')
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
 
-    log_file.close()
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        verify_bgp_administrative_distance(module)
+
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 if __name__ == '__main__':
     main()
