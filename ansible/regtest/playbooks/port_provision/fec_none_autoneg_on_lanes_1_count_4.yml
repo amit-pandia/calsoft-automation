@@ -40,14 +40,19 @@
         src: "../../files/goesd-platina-mk1-modprobe.conf_lane1_count4"
         dest: "{{ goesd_modprobe_file }}"
 
+    - name: Update interfaces file for fiber ports
+      test_fiber_ports:
+        cmd : "4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1"
+      register: fmodule_out
+
     - name: Restart goes
       command: "{{ item }}"
       with_items:
       - 'rmmod platina-mk1'
-      - 'modprobe platina-mk1 provision=4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1'
-      - 'goes restart'
+      - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
       - 'ifdown -a --allow vnet'
       - 'ifup -a --allow vnet'
+      - "goes restart"
 
 #    - name: Restart networking service
 #      service:

@@ -130,7 +130,7 @@
     - name: Print test case result
       debug:
         msg: "Test case result: {{ result.result_status }}"
-        when: not dry_run
+      when: not dry_run
 
     - name: Print failure summary
       debug:

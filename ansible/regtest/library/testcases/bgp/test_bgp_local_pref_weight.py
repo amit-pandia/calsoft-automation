@@ -20,8 +20,6 @@
 
 import shlex
 
-import time
-
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -144,52 +142,6 @@ def execute_commands(module, cmd):
 
     return out
 
-def verift_bgp_pref_weight(module):
-    spine_list = module.params['spine_list']
-    switch_name = module.params['switch_name']
-    leaf_list = module.params['leaf_list']
-    global RESULT_STATUS, HASH_DICT
-    failure_summary = ''
-    cmd = "vtysh -c 'sh ip bgp'"
-    out = execute_commands(module, cmd)
-
-    if out:
-        for switch in spine_list + leaf_list:
-            network = '192.168.{}.1'.format(switch[-2::])
-            if network not in out:
-                RESULT_STATUS = False
-                failure_summary += 'On Switch {} bgp route '.format(
-                    switch_name)
-                failure_summary += 'for network {} is not present '.format(
-                    network)
-                failure_summary += 'in the output of command {}\n'.format(
-                    cmd)
-
-        local_pref = module.params['local_pref']
-        weight = module.params['weight']
-
-        if local_pref:
-            value = local_pref
-            name = 'local preference'
-        else:
-            value = weight
-            name = 'weight'
-
-        if value not in out:
-            RESULT_STATUS = False
-            failure_summary += 'On Switch {} {} '.format(switch_name, name)
-            failure_summary += 'value {} is not present '.format(value)
-            failure_summary += 'in the output of command {}\n'.format(cmd)
-    else:
-        RESULT_STATUS = False
-        failure_summary += 'On switch {} '.format(switch_name)
-        failure_summary += 'result cannot be verified since '
-        failure_summary += 'output of command {} '.format(cmd)
-        failure_summary += 'is None'
-
-    alist = [True if RESULT_STATUS else False]
-    alist.append(failure_summary)
-    return alist
 
 def verify_bgp_local_pref_weight(module):
     """
@@ -197,11 +149,14 @@ def verify_bgp_local_pref_weight(module):
     :param module: The Ansible module to fetch input parameters.
     """
     global RESULT_STATUS, HASH_DICT
-    switch_name = module.params['switch_name']
-    pref_wt_switch = module.params['pref_wt_switch']
-    package_name = module.params['package_name']
     delay = module.params['delay']
     retries = module.params['retries']
+    failure_summary = ''
+    switch_name = module.params['switch_name']
+    pref_wt_switch = module.params['pref_wt_switch']
+    spine_list = module.params['spine_list']
+    leaf_list = module.params['leaf_list']
+    package_name = module.params['package_name']
 
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
@@ -209,18 +164,57 @@ def verify_bgp_local_pref_weight(module):
     # Restart and check package status
     execute_commands(module, 'service {} restart'.format(package_name))
     execute_commands(module, 'service {} status'.format(package_name))
-
+    import time
     if switch_name == pref_wt_switch:
-        # Get all ip bgp routes
-        retry = retries - 1
-        while(retry):
-            if verift_bgp_pref_weight(module)[0]:
-                break
-            else:
-                time.sleep(delay)
-                retry -= 1
+        while(retries):
+		# Get all ip bgp routes
+		failure_summary = ''
+		cmd = "vtysh -c 'sh ip bgp'"
+		out = execute_commands(module, cmd)
 
-    HASH_DICT['result.detail'] = verift_bgp_pref_weight(module)[1]
+		if out:
+		    for switch in spine_list + leaf_list:
+			network = '192.168.{}.1'.format(switch[-2::])
+			if network not in out:
+			    RESULT_STATUS = False
+			    failure_summary += 'On Switch {} bgp route '.format(
+				switch_name)
+			    failure_summary += 'for network {} is not present '.format(
+				network)
+			    failure_summary += 'in the output of command {}\n'.format(
+				cmd)
+
+		    local_pref = module.params['local_pref']
+		    weight = module.params['weight']
+
+		    if local_pref:
+			value = local_pref
+			name = 'local preference'
+		    else:
+			value = weight
+			name = 'weight'
+
+		    if value not in out:
+			RESULT_STATUS = False
+			failure_summary += 'On Switch {} {} '.format(switch_name, name)
+			failure_summary += 'value {} is not present '.format(value)
+			failure_summary += 'in the output of command {}\n'.format(cmd)
+		else:
+		    RESULT_STATUS = False
+		    failure_summary += 'On switch {} '.format(switch_name)
+		    failure_summary += 'result cannot be verified since '
+		    failure_summary += 'output of command {} '.format(cmd)
+		    failure_summary += 'is None'
+               
+                if not RESULT_STATUS: 
+			time.sleep(delay)
+			retries -= 1
+                else:
+                        break
+
+
+
+    HASH_DICT['result.detail'] = failure_summary
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
@@ -233,19 +227,20 @@ def main():
             switch_name=dict(required=False, type='str'),
             local_pref=dict(required=False, type='str', default=''),
             weight=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             pref_wt_switch=dict(required=False, type='str'),
             spine_list=dict(required=False, type='list', default=[]),
             leaf_list=dict(required=False, type='list', default=[]),
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
-            delay=dict(required=False, type='int', default=10),
-            retries=dict(required=False, type='int', default=6),
-            dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
+
     if module.params['dry_run_mode']:
         package_name = module.params['package_name']
         cmds_list = []
@@ -290,7 +285,6 @@ def main():
             hash_dict=HASH_DICT,
             log_file_path=log_file_path
         )
-
 if __name__ == '__main__':
     main()
 

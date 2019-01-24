@@ -131,6 +131,55 @@ def execute_commands(module, cmd):
 
     return out
 
+def verify_bgp_prevention(module):
+    global RESULT_STATUS, HASH_DICT
+    failure_summary = ''
+    switch_name = module.params['switch_name']
+    package_name = module.params['package_name']
+    log_file = module.params['log_file']
+    leaf_list = module.params['leaf_list']
+    delay = module.params['delay']
+    retries = module.params['retries']
+
+    as_number, ip = None, None
+    try:
+	    if leaf_list.index(switch_name) == 0:
+		    for line in module.params['config_file'].splitlines():
+			line = line.strip()
+			if 'router' in line:
+			    as_number = line.split()[2]
+
+			if 'neighbor' in line:
+			    if as_number not in line:
+				ip = line.split()[1]
+
+		    if ip is not None:
+			# Clear ip bgp route
+			cmd = "vtysh -c 'clear ip bgp {}'".format(ip)
+			execute_commands(module, cmd)
+
+			# Wait for 35 secs for bgp to convergence
+			time.sleep(35)
+
+			# Read the log file
+			bgp_log_file = open(log_file, 'r')
+			out = bgp_log_file.read()
+
+			# Line to check in the log file
+			line = 'denied due to: as-path contains our own as'
+
+			if line not in out.lower():
+			    RESULT_STATUS = False
+			    failure_summary += 'On switch {} '.format(switch_name)
+			    failure_summary += 'could not find bgp loop prevention details '
+			    failure_summary += 'in the log file {}\n'.format(log_file)
+    except Exception as e:
+	pass
+
+    alist = [True if RESULT_STATUS else False]
+    alist.append(failure_summary)
+    return alist
+
 
 def verify_bgp_loop_prevention(module):
     """
@@ -138,7 +187,6 @@ def verify_bgp_loop_prevention(module):
     :param module: The Ansible module to fetch input parameters.
     """
     global RESULT_STATUS, HASH_DICT
-    failure_summary = ''
     switch_name = module.params['switch_name']
     package_name = module.params['package_name']
     log_file = module.params['log_file']
@@ -156,38 +204,14 @@ def verify_bgp_loop_prevention(module):
     as_number, ip = None, None
     is_leaf = True if switch_name in leaf_list else False
     if is_leaf:
-        if leaf_list.index(switch_name) == 0:
-            for line in module.params['config_file'].splitlines():
-                line = line.strip()
-                if 'router' in line:
-                    as_number = line.split()[2]
+        retry = retries - 1
+        while(retry):
+           if verify_bgp_prevention(module)[0]:
+		break
+           time.sleep(delay)
+           retry -= 1
 
-                if 'neighbor' in line:
-                    if as_number not in line:
-                        ip = line.split()[1]
-
-            if ip is not None:
-                # Clear ip bgp route
-                cmd = "vtysh -c 'clear ip bgp {}'".format(ip)
-                execute_commands(module, cmd)
-
-                # Wait for 35 secs for bgp to convergence
-                time.sleep(35)
-
-                # Read the log file
-                bgp_log_file = open(log_file, 'r')
-                out = bgp_log_file.read()
-
-                # Line to check in the log file
-                line = 'denied due to: as-path contains our own as'
-
-                if line not in out.lower():
-                    RESULT_STATUS = False
-                    failure_summary += 'On switch {} '.format(switch_name)
-                    failure_summary += 'could not find bgp loop prevention details '
-                    failure_summary += 'in the log file {}\n'.format(log_file)
-
-    HASH_DICT['result.detail'] = failure_summary
+    HASH_DICT['result.detail'] = verify_bgp_prevention(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
@@ -211,30 +235,74 @@ def main():
     )
 
     global HASH_DICT, RESULT_STATUS
+    if module.params['dry_run_mode']:
+        package_name = module.params['package_name']
+        cmds_list = []
 
-    verify_bgp_loop_prevention(module)
+        # Get the current/running configurations
+        execute_commands(module, "vtysh -c 'sh running-config'")
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        # Restart and check package status
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        switch_name = module.params['switch_name']
+        package_name = module.params['package_name']
+        log_file = module.params['log_file']
+        leaf_list = module.params['leaf_list']
+        delay = module.params['delay']
+        retries = module.params['retries']
 
-    log_file.close()
+        as_number, ip = None, None
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        if leaf_list.index(switch_name) == 0:
+            for line in module.params['config_file'].splitlines():
+                line = line.strip()
+                if 'router' in line:
+                    as_number = line.split()[2]
+
+                if 'neighbor' in line:
+                    if as_number not in line:
+                        ip = line.split()[1]
+
+            if ip is not None:
+                # Clear ip bgp route
+                cmd = "vtysh -c 'clear ip bgp {}'".format(ip)
+                execute_commands(module, cmd)
+
+	execute_commands(module, 'goes status')
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+
+    else:
+	    verify_bgp_loop_prevention(module)
+
+	    # Calculate the entire test result
+	    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+	    # Create a log file
+	    log_file_path = module.params['log_dir_path']
+	    log_file_path += '/{}.log'.format(module.params['hash_name'])
+	    log_file = open(log_file_path, 'w')
+	    for key, value in HASH_DICT.iteritems():
+		log_file.write(key)
+		log_file.write('\n')
+		log_file.write(str(value))
+		log_file.write('\n')
+		log_file.write('\n')
+
+	    log_file.close()
+
+	    # Exit the module and return the required JSON.
+	    module.exit_json(
+		hash_dict=HASH_DICT,
+		log_file_path=log_file_path
+	    )
 
 if __name__ == '__main__':
     main()
