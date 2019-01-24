@@ -48,6 +48,9 @@
 # Run all docker test cases
 - include: docker_main.yml
 
+# Run all SNMP test cases
+- include: snmp_main.yml
+
 # Run goes boot playbooks
 - include: playbooks/upgrade/goes_boot.yml
 
