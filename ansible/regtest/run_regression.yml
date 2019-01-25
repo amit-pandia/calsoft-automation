@@ -60,6 +60,9 @@
 # Run BMC upgrade playbook
 - include: playbooks/upgrade/bmc_upgrade.yml
 
+# Run all issues test cases
+- include: issues_main.yml
+
 
 - hosts: server_emulator
   become: true
