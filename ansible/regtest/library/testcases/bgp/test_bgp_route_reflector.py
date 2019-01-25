@@ -20,6 +20,8 @@
 
 import shlex
 
+import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -118,7 +120,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -206,6 +208,8 @@ def verify_bgp_route_reflector(module):
     leaf_list = module.params['leaf_list']
     reflector_switch = module.params['reflector_switch']
     package_name = module.params['package_name']
+    delay = module.params['delay']
+    retries = module.params['retries']
     
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
@@ -215,20 +219,28 @@ def verify_bgp_route_reflector(module):
     execute_commands(module, 'service {} status'.format(package_name))
 
     if switch_name == reflector_switch:
-        for switch in leaf_list:
-            leaf_network.append('192.168.{}.1'.format(switch[-2::]))
+        while(retries):
+            failure_summary = ''
+            for switch in leaf_list:
+                leaf_network.append('192.168.{}.1'.format(switch[-2::]))
 
-        # Verify Received from RR client
-        for network in leaf_network:
-            failure_summary += verify_rr_client(module, switch_name, network)
+            # Verify Received from RR client
+            for network in leaf_network:
+                failure_summary += verify_rr_client(module, switch_name, network)
 
-        # Verify advertised routes
-        for line in module.params['config_file'].splitlines():
-            line = line.strip()
-            if 'neighbor' in line and 'remote-as' in line:
-                ip = line.split()[1]
-                failure_summary += verify_advertised_routes(
-                    module, switch_name, ip)
+            # Verify advertised routes
+            for line in module.params['config_file'].splitlines():
+                line = line.strip()
+                if 'neighbor' in line and 'remote-as' in line:
+                    ip = line.split()[1]
+                    failure_summary += verify_advertised_routes(
+                        module, switch_name, ip)
+
+            if not RESULT_STATUS:
+                time.sleep(delay)
+                retries -= 1
+            else:
+                break
 
     HASH_DICT['result.detail'] = failure_summary
 
@@ -247,34 +259,85 @@ def main():
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
+    if module.params['dry_run_mode']:
+        package_name = module.params['package_name']
+        cmds_list = []
 
-    verify_bgp_route_reflector(module)
+        execute_commands(module, "vtysh -c 'sh running-config'")
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        # Restart and check package status
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        leaf_network = []
+        switch_name = module.params['switch_name']
+        leaf_list = module.params['leaf_list']
+        reflector_switch = module.params['reflector_switch']
+        package_name = module.params['package_name']
 
-    log_file.close()
+        # Get the current/running configurations
+        execute_commands(module, "vtysh -c 'sh running-config'")
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        # Restart and check package status
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
+
+        if switch_name == reflector_switch:
+                for switch in leaf_list:
+                    leaf_network.append('192.168.{}.1'.format(switch[-2::]))
+
+                # Verify Received from RR client
+                for network in leaf_network:
+                    verify_rr_client(module, switch_name, network)
+
+                # Verify advertised routes
+                for line in module.params['config_file'].splitlines():
+                    line = line.strip()
+                    if 'neighbor' in line and 'remote-as' in line:
+                        ip = line.split()[1]
+                        verify_advertised_routes(
+                            module, switch_name, ip)
+
+        execute_commands(module, 'goes status')
+
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+        verify_bgp_route_reflector(module)
+
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 if __name__ == '__main__':
     main()

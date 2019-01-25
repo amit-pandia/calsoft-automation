@@ -129,7 +129,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd or module.params['dry_run_mode']:
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -167,50 +167,47 @@ def verify_bgp_local_pref_weight(module):
     import time
     if switch_name == pref_wt_switch:
         while(retries):
-		# Get all ip bgp routes
-		failure_summary = ''
-		cmd = "vtysh -c 'sh ip bgp'"
-		out = execute_commands(module, cmd)
+			# Get all ip bgp routes
+			failure_summary = ''
+			cmd = "vtysh -c 'sh ip bgp'"
+			out = execute_commands(module, cmd)
 
-		if out:
-		    for switch in spine_list + leaf_list:
-			network = '192.168.{}.1'.format(switch[-2::])
-			if network not in out:
-			    RESULT_STATUS = False
-			    failure_summary += 'On Switch {} bgp route '.format(
-				switch_name)
-			    failure_summary += 'for network {} is not present '.format(
-				network)
-			    failure_summary += 'in the output of command {}\n'.format(
-				cmd)
+			if out:
+			    for switch in spine_list + leaf_list:
+				network = '192.168.{}.1'.format(switch[-2::])
+				if network not in out:
+				    RESULT_STATUS = False
+				    failure_summary += 'On Switch {} bgp route '.format(switch_name)
+				    failure_summary += 'for network {} is not present '.format(network)
+				    failure_summary += 'in the output of command {}\n'.format(cmd)
 
 		    local_pref = module.params['local_pref']
 		    weight = module.params['weight']
 
 		    if local_pref:
-			value = local_pref
-			name = 'local preference'
+				value = local_pref
+				name = 'local preference'
 		    else:
-			value = weight
-			name = 'weight'
+				value = weight
+				name = 'weight'
 
 		    if value not in out:
-			RESULT_STATUS = False
-			failure_summary += 'On Switch {} {} '.format(switch_name, name)
-			failure_summary += 'value {} is not present '.format(value)
-			failure_summary += 'in the output of command {}\n'.format(cmd)
+				RESULT_STATUS = False
+				failure_summary += 'On Switch {} {} '.format(switch_name, name)
+				failure_summary += 'value {} is not present '.format(value)
+				failure_summary += 'in the output of command {}\n'.format(cmd)
 		else:
-		    RESULT_STATUS = False
-		    failure_summary += 'On switch {} '.format(switch_name)
-		    failure_summary += 'result cannot be verified since '
-		    failure_summary += 'output of command {} '.format(cmd)
-		    failure_summary += 'is None'
+			    RESULT_STATUS = False
+			    failure_summary += 'On switch {} '.format(switch_name)
+			    failure_summary += 'result cannot be verified since '
+			    failure_summary += 'output of command {} '.format(cmd)
+			    failure_summary += 'is None'
                
-                if not RESULT_STATUS: 
+        if not RESULT_STATUS:
 			time.sleep(delay)
 			retries -= 1
-                else:
-                        break
+        else:
+            break
 
 
 
