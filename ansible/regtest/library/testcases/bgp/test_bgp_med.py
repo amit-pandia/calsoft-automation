@@ -20,6 +20,8 @@
 
 import shlex
 
+import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -111,7 +113,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -136,6 +138,8 @@ def verify_bgp_med(module):
     package_name = module.params['package_name']
     med_switch = module.params['med_switch']
     config_file = module.params['config_file'].splitlines()
+    delay = module.params['delay']
+    retries = module.params['retries']
 
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
@@ -146,35 +150,43 @@ def verify_bgp_med(module):
 
     if switch_name == med_switch:
         # Get all bgp routes
-        cmd = "vtysh -c 'sh ip bgp'"
-        bgp_out = execute_commands(module, cmd)
+        while(retries):
+            failure_summary = ''
+            cmd = "vtysh -c 'sh ip bgp'"
+            bgp_out = execute_commands(module, cmd)
 
-        if bgp_out:
-            for line in config_file:
-                line = line.strip()
-                if line.startswith('ip prefix-list'):
-                    ip = line.split().pop()
-                    if ip not in bgp_out:
-                        RESULT_STATUS = False
-                        failure_summary += 'On switch {} '.format(switch_name)
-                        failure_summary += 'bgp route for network {} '.format(ip)
-                        failure_summary += 'is not present in the '
-                        failure_summary += 'output of command {}\n'.format(cmd)
+            if bgp_out:
+                for line in config_file:
+                    line = line.strip()
+                    if line.startswith('ip prefix-list'):
+                        ip = line.split().pop()
+                        if ip not in bgp_out:
+                            RESULT_STATUS = False
+                            failure_summary += 'On switch {} '.format(switch_name)
+                            failure_summary += 'bgp route for network {} '.format(ip)
+                            failure_summary += 'is not present in the '
+                            failure_summary += 'output of command {}\n'.format(cmd)
 
-                if line.startswith('set metric'):
-                    med = line.split().pop()
-                    med = ' {} '.format(med)
-                    if med not in bgp_out:
-                        RESULT_STATUS = False
-                        failure_summary += 'On switch {} '.format(switch_name)
-                        failure_summary += 'MED value{}is not present '.format(med)
-                        failure_summary += 'in output of command {}\n'.format(cmd)
-        else:
-            RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'bgp med cannot be verified since '
-            failure_summary += 'output of command {} '.format(cmd)
-            failure_summary += 'is None'
+                    if line.startswith('set metric'):
+                        med = line.split().pop()
+                        med = ' {} '.format(med)
+                        if med not in bgp_out:
+                            RESULT_STATUS = False
+                            failure_summary += 'On switch {} '.format(switch_name)
+                            failure_summary += 'MED value{}is not present '.format(med)
+                            failure_summary += 'in output of command {}\n'.format(cmd)
+            else:
+                RESULT_STATUS = False
+                failure_summary += 'On switch {} '.format(switch_name)
+                failure_summary += 'bgp med cannot be verified since '
+                failure_summary += 'output of command {} '.format(cmd)
+                failure_summary += 'is None'
+
+            if not RESULT_STATUS:
+                time.sleep(delay)
+                retries -= 1
+            else:
+                break
 
     HASH_DICT['result.detail'] = failure_summary
 
@@ -192,34 +204,58 @@ def main():
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
+    if module.params['dry_run_mode']:
 
-    verify_bgp_med(module)
+        package_name = module.params['package_name']
+        cmds_list = []
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        execute_commands(module, "vtysh -c 'sh running-config'")
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        # Restart and check package status
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
+        cmd = "vtysh -c 'sh ip bgp'"
+        execute_commands(module, cmd)
+        execute_commands(module, 'goes status')
 
-    log_file.close()
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+        verify_bgp_med(module)
+
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 if __name__ == '__main__':
     main()
