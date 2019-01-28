@@ -144,6 +144,7 @@ def verify_rr_client(module, switch_name, network):
     """
     global RESULT_STATUS
     failure_summary = ''
+    RESULT_STATUS = True
 
     cmd = "vtysh -c 'sh ip bgp {}'".format(network)
     out = execute_commands(module, cmd)
@@ -174,6 +175,7 @@ def verify_advertised_routes(module, switch_name, ip):
     """
     global RESULT_STATUS
     failure_summary = ''
+    RESULT_STATUS = True
     self_network = '192.168.{}.1'.format(switch_name[-2::])
 
     cmd = "vtysh -c 'sh ip bgp neighbors {} advertised-routes'".format(ip)
@@ -221,6 +223,7 @@ def verify_bgp_route_reflector(module):
     if switch_name == reflector_switch:
         while(retries):
             failure_summary = ''
+            RESULT_STATUS = True
             for switch in leaf_list:
                 leaf_network.append('192.168.{}.1'.format(switch[-2::]))
 

@@ -36,6 +36,11 @@
         src: "../files/goesd-platina-mk1-modprobe.conf"
         dest: "/etc/modprobe.d/goesd-platina-mk1-modprobe.conf"
 
+    - name: Update interfaces file for fiber ports
+      test_fiber_ports:
+        cmd : "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1"
+      register: fmodule_out
+
     - name: Execute commands
       command: "{{ item }}"
       with_items:

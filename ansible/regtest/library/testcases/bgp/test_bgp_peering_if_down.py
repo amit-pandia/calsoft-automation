@@ -144,6 +144,7 @@ def check_bgp_neighbors(module):
     :param module: The Ansible module to fetch input parameters.
     """
     global RESULT_STATUS, HASH_DICT
+    RESULT_STATUS = True
     neighbor_count = 0
     failure_summary = ''
     switch_name = module.params['switch_name']
@@ -195,6 +196,7 @@ def verify_ping(module, self_ip, neighbor_ip):
     """
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
+    RESULT_STATUS = True
     switch_name = module.params['switch_name']
     packet_count = '3'
 

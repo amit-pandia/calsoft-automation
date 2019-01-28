@@ -146,6 +146,7 @@ def verify_traffic(module):
     # Verify ping
     while(retries):
         failure_summary = ''
+        RESULT_STATUS = True
         packet_count = '3'
         ping_cmd = 'ping -w 3 -c {} -I {} {}'.format(packet_count,
                                                      self_ip, neighbor_ip)

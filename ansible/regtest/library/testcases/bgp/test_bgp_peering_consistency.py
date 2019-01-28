@@ -121,6 +121,7 @@ def verify_bgp_consistency(module):
     global RESULT_STATUS, HASH_DICT
     switch_name = module.params['switch_name']
     failure_summary = ''
+    RESULT_STATUS = True
     values_to_check = ['10.0.1.0', 'xeth1']
     bgp_cmd = "vtysh -c 'sh ip route'"
     route_cmd = 'route'

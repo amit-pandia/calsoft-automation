@@ -148,6 +148,7 @@ def verify_bgp_as_path(module):
     if switch_name == as_path_switch:
         while(retries):
 		failure_summary = ''
+		RESULT_STATUS = True
 		# Get all bgp routes
 		cmd = "vtysh -c 'sh ip bgp'"
 		bgp_out = execute_commands(module, cmd)
