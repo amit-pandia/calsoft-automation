@@ -128,6 +128,7 @@ def verify_ip_routes(module):
     converge_switch_config = module.params['converge_switch_config']
 
     global RESULT_STATUS
+    RESULT_STATUS = True
     failure_summary = ''
     cmd = "vtysh -c 'sh ip route'"
     routes_out = execute_commands(module, cmd)
@@ -162,6 +163,7 @@ def verify_ip_routes(module):
 def verify_ping(module):
 
     global RESULT_STATUS
+    RESULT_STATUS = True
     failure_summary = ''
     switch_name = module.params['switch_name']
     converge_switch = module.params['converge_switch']

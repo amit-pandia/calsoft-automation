@@ -152,6 +152,7 @@ def verify_bgp_med(module):
         # Get all bgp routes
         while(retries):
             failure_summary = ''
+            RESULT_STATUS = True
             cmd = "vtysh -c 'sh ip bgp'"
             bgp_out = execute_commands(module, cmd)
 

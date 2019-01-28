@@ -134,6 +134,7 @@ def execute_commands(module, cmd):
 def verify_bgp_prevention(module):
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
+    RESULT_STATUS = True
     switch_name = module.params['switch_name']
     package_name = module.params['package_name']
     log_file = module.params['log_file']

@@ -145,6 +145,7 @@ def verify_route_advertise(module):
 
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
+    RESULT_STATUS = True
     cmd = "vtysh -c 'sh ip bgp'"
     bgp_out = execute_commands(module, cmd)
 
@@ -185,6 +186,7 @@ def verify_ping(module):
     spine_list1 = module.params['spine_list'][:]
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
+    RESULT_STATUS = True
     if is_ping:
         packet_count = 5
         if switch_name in leaf_list1:
