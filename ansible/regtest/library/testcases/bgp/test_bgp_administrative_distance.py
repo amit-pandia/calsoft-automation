@@ -133,7 +133,7 @@ def execute_commands(module, cmd):
 def ip_routes(module):
 
     global RESULT_STATUS, HASH_DICT
-    RESULT_STATUS = True
+    RESULT_STATUS1 = True
     failure_summary = ''
     routes_to_check = []
     switch_name = module.params['switch_name']
@@ -156,7 +156,7 @@ def ip_routes(module):
 
         for route in routes_to_check:
             if route not in all_routes:
-                RESULT_STATUS = False
+                RESULT_STATUS1 = False
                 failure_summary += 'On switch {} '.format(switch_name)
                 failure_summary += 'bgp route for network {} '.format(route)
                 failure_summary += 'is not showing up '
@@ -170,7 +170,7 @@ def ip_routes(module):
                     if '20/' or '200/' in route:
                         pass
                     else:
-                        RESULT_STATUS = False
+                        RESULT_STATUS1 = False
                         failure_summary += 'On switch {} '.format(switch_name)
                         failure_summary += 'administrative value is not present '
                         failure_summary += 'in the bgp route {}\n'.format(route)
@@ -181,13 +181,13 @@ def ip_routes(module):
                     #     failure_summary += 'bgp route {} '.format(route)
                     #     failure_summary += 'does not start with B>*\n'
     else:
-        RESULT_STATUS = False
+        RESULT_STATUS1 = False
         failure_summary += 'On switch {} '.format(switch_name)
         failure_summary += 'bgp administrative distance cannot be verified '
         failure_summary += 'because output of command {} '.format(cmd)
         failure_summary += 'is None'
 
-    alist = [True if RESULT_STATUS else False]
+    alist = [True if RESULT_STATUS1 else False]
     alist.append(failure_summary)
     return alist
 
@@ -216,8 +216,7 @@ def verify_bgp_administrative_distance(module):
         retries -= 1
 
     # Store the failure summary in hash
-    HASH_DICT['result.detail'] = ip_routes(module)[1]
-
+    RESULT_STATUS, HASH_DICT['result.detail'] = ip_routes(module)[0], ip_routes(module)[1]
     # Get the GOES status info
     execute_commands(module, 'goes status')
 
