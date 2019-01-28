@@ -145,7 +145,7 @@ def verify_route_advertise(module):
 
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
-    RESULT_STATUS = True
+    RESULT_STATUS1 = True
     cmd = "vtysh -c 'sh ip bgp'"
     bgp_out = execute_commands(module, cmd)
 
@@ -162,19 +162,19 @@ def verify_route_advertise(module):
 
         for route in routes_to_check:
             if route not in bgp_out:
-                RESULT_STATUS = False
+                RESULT_STATUS1 = False
                 failure_summary += 'On switch {} '.format(switch_name)
                 failure_summary += 'bgp route for network {} '.format(route)
                 failure_summary += 'is not showing up '
                 failure_summary += 'in the output of {}\n'.format(cmd)
     else:
-        RESULT_STATUS = False
+        RESULT_STATUS1 = False
         failure_summary += 'On switch {} '.format(switch_name)
         failure_summary += 'bgp routes cannot be verified '
         failure_summary += 'because output of command {} '.format(cmd)
         failure_summary += 'is None'
 
-    alist = [True if RESULT_STATUS else False]
+    alist = [True if RESULT_STATUS1 else False]
     alist.append(failure_summary)
     return alist
 
@@ -186,7 +186,7 @@ def verify_ping(module):
     spine_list1 = module.params['spine_list'][:]
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
-    RESULT_STATUS = True
+    RESULT_STATUS1 = True
     if is_ping:
         packet_count = 5
         if switch_name in leaf_list1:
@@ -200,13 +200,13 @@ def verify_ping(module):
         ping_out = execute_commands(module, cmd)
 
         if '100% packet loss' in ping_out:
-            RESULT_STATUS = False
+            RESULT_STATUS1 = False
             failure_summary += 'Ping from switch {} to {}'.format(switch_name, p_list[0])
             failure_summary += ' for {} packets'.format(packet_count)
             failure_summary += ' are not received in the output of '
             failure_summary += 'command {}\n'.format(cmd)
 
-    alist = [True if RESULT_STATUS else False]
+    alist = [True if RESULT_STATUS1 else False]
     alist.append(failure_summary)
     return alist
 
@@ -246,7 +246,7 @@ def verify_bgp_route_advertise(module):
             retry -= 1
 
     # Store the failure summary in hash
-    HASH_DICT['result.detail'] = verify_route_advertise(module)[1] + verify_ping(module)[1]
+    RESULT_STATUS, HASH_DICT['result.detail'] = all(verify_route_advertise(module)[0], verify_ping(module)[0]), verify_route_advertise(module)[1] + verify_ping(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')

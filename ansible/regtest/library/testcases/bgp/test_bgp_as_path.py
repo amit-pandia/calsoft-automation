@@ -148,7 +148,7 @@ def verify_bgp_as_path(module):
     if switch_name == as_path_switch:
         while(retries):
 		failure_summary = ''
-		RESULT_STATUS = True
+		RESULT_STATUS1 = True
 		# Get all bgp routes
 		cmd = "vtysh -c 'sh ip bgp'"
 		bgp_out = execute_commands(module, cmd)
@@ -159,7 +159,7 @@ def verify_bgp_as_path(module):
 			if line.startswith('ip prefix-list'):
 			    ip = line.split().pop()
 			    if ip not in bgp_out:
-				RESULT_STATUS = False
+				RESULT_STATUS1 = False
 				failure_summary += 'On switch {} '.format(switch_name)
 				failure_summary += 'bgp route for network {} '.format(ip)
 				failure_summary += 'is not present in the '
@@ -168,18 +168,18 @@ def verify_bgp_as_path(module):
 			if line.startswith('set as-path'):
 			    as_path = line[-3::]
 			    if as_path not in bgp_out:
-				RESULT_STATUS = False
+				RESULT_STATUS1 = False
 				failure_summary += 'On switch {} '.format(switch_name)
 				failure_summary += 'set as-path is not present in the '
 				failure_summary += 'output of command {}\n'.format(cmd)
 		else:
-		    RESULT_STATUS = False
+		    RESULT_STATUS1 = False
 		    failure_summary += 'On switch {} '.format(switch_name)
 		    failure_summary += 'bgp as path cannot be verified since '
 		    failure_summary += 'output of command {} '.format(cmd)
 		    failure_summary += 'is None'
 
-		if not RESULT_STATUS:
+		if not RESULT_STATUS1:
 			time.sleep(delay)
 			retries -= 1
 		else:
@@ -187,7 +187,7 @@ def verify_bgp_as_path(module):
 
 
     HASH_DICT['result.detail'] = failure_summary
-
+	RESULT_STATUS = RESULT_STATUS1
     # Get the GOES status info
     execute_commands(module, 'goes status')
 
