@@ -131,7 +131,7 @@ def execute_commands(module, cmd):
 def bgp_authentication(module):
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
-    RESULT_STATUS = True
+    RESULT_STATUS1 = True
     neighbor_count = 0
     switch_name = module.params['switch_name']
     config_file = module.params['config_file'].splitlines()
@@ -147,26 +147,26 @@ def bgp_authentication(module):
                 neighbor_ip = config[1]
                 remote_as = config[3]
                 if neighbor_ip not in bgp_out or remote_as not in bgp_out:
-                    RESULT_STATUS = False
+                    RESULT_STATUS1 = False
                     failure_summary += 'On switch {} '.format(switch_name)
                     failure_summary += 'bgp neighbor {} '.format(neighbor_ip)
                     failure_summary += 'is not present in the output of '
                     failure_summary += 'command {}\n'.format(cmd)
 
         if bgp_out.count('BGP state = Established') != neighbor_count:
-            RESULT_STATUS = False
+            RESULT_STATUS1 = False
             failure_summary += 'On switch {} '.format(switch_name)
             failure_summary += 'bgp state of all/some neighbors '
             failure_summary += 'are not Established in the output of '
             failure_summary += 'command {}\n'.format(cmd)
     else:
-        RESULT_STATUS = False
+        RESULT_STATUS1 = False
         failure_summary += 'On switch {} '.format(switch_name)
         failure_summary += 'bgp neighbor relationship cannot be verified '
         failure_summary += 'because output of command {} '.format(cmd)
         failure_summary += 'is None'
 
-    alist = [True if RESULT_STATUS else False]
+    alist = [True if RESULT_STATUS1 else False]
     alist.append(failure_summary)
     return alist
 
@@ -194,7 +194,7 @@ def verify_bgp_authentication(module):
         time.sleep(delay)
         retry -= 1
 
-    HASH_DICT['result.detail'] = bgp_authentication(module)[1]
+    RESULT_STATUS, HASH_DICT['result.detail'] = bgp_authentication(module)[0], bgp_authentication(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
