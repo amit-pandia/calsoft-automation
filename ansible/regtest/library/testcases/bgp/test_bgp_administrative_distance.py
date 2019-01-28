@@ -133,6 +133,7 @@ def execute_commands(module, cmd):
 def ip_routes(module):
 
     global RESULT_STATUS, HASH_DICT
+    RESULT_STATUS = True
     failure_summary = ''
     routes_to_check = []
     switch_name = module.params['switch_name']

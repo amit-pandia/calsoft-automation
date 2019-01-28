@@ -131,6 +131,7 @@ def execute_commands(module, cmd):
 def bgp_authentication(module):
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
+    RESULT_STATUS = True
     neighbor_count = 0
     switch_name = module.params['switch_name']
     config_file = module.params['config_file'].splitlines()

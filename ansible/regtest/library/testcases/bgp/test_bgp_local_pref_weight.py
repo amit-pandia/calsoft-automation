@@ -169,6 +169,7 @@ def verify_bgp_local_pref_weight(module):
         while(retries):
 			# Get all ip bgp routes
 			failure_summary = ''
+			RESULT_STATUS = True
 			cmd = "vtysh -c 'sh ip bgp'"
 			out = execute_commands(module, cmd)
 

@@ -125,6 +125,7 @@ def verify_bgp_loopback(module):
     global RESULT_STATUS, HASH_DICT
     neighbor_count = 0
     failure_summary = ''
+    RESULT_STATUS = True
     switch_name = module.params['switch_name']
     config_file = module.params['config_file'].splitlines()
     cmd = "vtysh -c 'sh ip bgp neighbors'"
