@@ -246,7 +246,7 @@ def verify_bgp_route_advertise(module):
             retry -= 1
 
     # Store the failure summary in hash
-    RESULT_STATUS, HASH_DICT['result.detail'] = all(verify_route_advertise(module)[0], verify_ping(module)[0]), verify_route_advertise(module)[1] + verify_ping(module)[1]
+    RESULT_STATUS, HASH_DICT['result.detail'] = all([verify_route_advertise(module)[0], verify_ping(module)[0]]), verify_route_advertise(module)[1] + verify_ping(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')

@@ -225,7 +225,7 @@ def verify_bgp_quagga_convergence(module):
                 time.sleep(delay)
                 retry -= 1
 
-    RESULT_STATUS, HASH_DICT['result.detail'] = all(verify_ip_routes(module)[0], verify_ping(module)[0]), verify_ip_routes(module)[1] + verify_ping(module)[1]
+    RESULT_STATUS, HASH_DICT['result.detail'] = all([verify_ip_routes(module)[0], verify_ping(module)[0]]), verify_ip_routes(module)[1] + verify_ping(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')

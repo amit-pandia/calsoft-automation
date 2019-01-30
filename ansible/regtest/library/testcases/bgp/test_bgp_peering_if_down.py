@@ -271,7 +271,7 @@ def verify_bgp_peering_interface_down(module):
             time.sleep(delay)
             retry -= 1
 
-    RESULT_STATUS, HASH_DICT['result.detail'] = all(check_bgp_neighbors(module)[0], verify_ping(module, self_ip, neighbor_ip)[0]), check_bgp_neighbors(module)[1] + verify_ping(module, self_ip, neighbor_ip)[1]
+    RESULT_STATUS, HASH_DICT['result.detail'] = all([check_bgp_neighbors(module)[0], verify_ping(module, self_ip, neighbor_ip)[0]]), check_bgp_neighbors(module)[1] + verify_ping(module, self_ip, neighbor_ip)[1]
 
     # Wait for 3 seconds
     time.sleep(delay)
