@@ -187,7 +187,8 @@ def verify_bgp_as_path(module):
 
 
     HASH_DICT['result.detail'] = failure_summary
-    RESULT_STATUS = RESULT_STATUS1
+
+    RESULT_STATUS = RESULT_STATUS
     # Get the GOES status info
     execute_commands(module, 'goes status')
 

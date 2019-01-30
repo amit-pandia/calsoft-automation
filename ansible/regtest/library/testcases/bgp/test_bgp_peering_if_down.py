@@ -301,6 +301,7 @@ def verify_bgp_peering_interface_down(module):
             retry -= 1
 
     HASH_DICT['result.detail'] = HASH_DICT['result.detail'] + check_bgp_neighbors(module)[1]
+    RESULT_STATUS = all([RESULT_STATUS, check_bgp_neighbors(module)[0], verify_ping(module, self_ip, neighbor_ip)[0]])
     # Verify ping
     # if check_ping and is_leaf:
     #    verify_ping(module, self_ip, neighbor_ip)
@@ -336,6 +337,7 @@ def verify_bgp_peering_interface_down(module):
             retry -= 1
 
     HASH_DICT['result.detail'] = HASH_DICT['result.detail'] + check_bgp_neighbors(module)[1] + verify_ping(module, self_ip, neighbor_ip)[1]
+    RESULT_STATUS = all([RESULT_STATUS, check_bgp_neighbors(module)[0], verify_ping(module, self_ip, neighbor_ip)[0]])
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
