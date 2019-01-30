@@ -67,7 +67,6 @@
         package_name: "quagga"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ bgp_log_dir }}"
-        dry_run_mode: "{{ dry_run }}"
       register: module_out
       when: not dry_run
 
