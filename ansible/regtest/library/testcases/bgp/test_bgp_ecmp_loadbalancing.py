@@ -20,6 +20,8 @@
 
 import shlex
 
+import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -115,7 +117,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if ('service' in cmd and 'restart' in cmd) or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -137,6 +139,8 @@ def verify_bgp_ecmp_load_balancing(module):
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
     routes_to_check = []
+    delay = module.params['delay']
+    retries = module.params['retries']
     switch_name = module.params['switch_name']
     package_name = module.params['package_name']
     spine_list = module.params['spine_list']
@@ -151,44 +155,53 @@ def verify_bgp_ecmp_load_balancing(module):
 
     is_spine = True if switch_name in spine_list else False
     if is_spine:
-        # Get all bgp routes
-        bgp_cmd = "vtysh -c 'sh ip bgp'"
-        bgp_out = execute_commands(module, bgp_cmd)
+        retry = retries
+        while (retry):
+            RESULT_STATUS = True
+            # Get all bgp routes
+            bgp_cmd = "vtysh -c 'sh ip bgp'"
+            bgp_out = execute_commands(module, bgp_cmd)
 
-        routes_cmd = "vtysh -c 'sh ip route'"
-        routes_out = execute_commands(module, routes_cmd)
+            routes_cmd = "vtysh -c 'sh ip route'"
+            routes_out = execute_commands(module, routes_cmd)
 
-        if bgp_out and routes_out:
-            spine_list.remove(switch_name)
-            switches_list = spine_list + leaf_list
+            if bgp_out and routes_out:
+                spine_list.remove(switch_name)
+                switches_list = spine_list + leaf_list
 
-            for switch in switches_list:
-                routes_to_check.append('192.168.{}.1/32'.format(switch[-2::]))
+                for switch in switches_list:
+                    routes_to_check.append('192.168.{}.1/32'.format(switch[-2::]))
 
-            for route in routes_to_check:
-                if route not in routes_out:
+                for route in routes_to_check:
+                    if route not in routes_out:
+                        RESULT_STATUS = False
+                        failure_summary += 'On switch {} '.format(switch_name)
+                        failure_summary += 'bgp route for network {} '.format(
+                            route)
+                        failure_summary += 'is not showing up '
+                        failure_summary += 'in the output of {}\n'.format(
+                            routes_cmd)
+
+                network = '192.168.{}.1'.format(spine_list[0][-2::])
+                if network not in bgp_out:
                     RESULT_STATUS = False
                     failure_summary += 'On switch {} '.format(switch_name)
-                    failure_summary += 'bgp route for network {} '.format(
-                        route)
+                    failure_summary += 'multipath route for network {} '.format(
+                        network)
                     failure_summary += 'is not showing up '
-                    failure_summary += 'in the output of {}\n'.format(
-                        routes_cmd)
-
-            network = '192.168.{}.1'.format(spine_list[0][-2::])
-            if network not in bgp_out:
+                    failure_summary += 'in the output of {}\n'.format(bgp_cmd)
+            else:
                 RESULT_STATUS = False
                 failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += 'multipath route for network {} '.format(
-                    network)
-                failure_summary += 'is not showing up '
-                failure_summary += 'in the output of {}\n'.format(bgp_cmd)
-        else:
-            RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'bgp routes cannot be verified '
-            failure_summary += 'because output of command {} '.format(bgp_cmd)
-            failure_summary += 'is None'
+                failure_summary += 'bgp routes cannot be verified '
+                failure_summary += 'because output of command {} '.format(bgp_cmd)
+                failure_summary += 'is None'
+
+            if not RESULT_STATUS:
+                retry -= 1
+                time.sleep(delay)
+            else:
+                break
 
     # Store the failure summary in hash
     HASH_DICT['result.detail'] = failure_summary
@@ -207,34 +220,61 @@ def main():
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
 
-    verify_bgp_ecmp_load_balancing(module)
+    if module.params['dry_run_mode']:
+        cmds_list = []
+        package_name = module.params['package_name']
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        execute_commands(module, "vtysh -c 'sh running-config'")
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'w')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        # Restart and check package status
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
+        bgp_cmd = "vtysh -c 'sh ip bgp'"
+        execute_commands(module, bgp_cmd)
 
-    log_file.close()
+        routes_cmd = "vtysh -c 'sh ip route'"
+        execute_commands(module, routes_cmd)
+        execute_commands(module, 'goes status')
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+    else:
+        verify_bgp_ecmp_load_balancing(module)
+
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'w')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 if __name__ == '__main__':
     main()
