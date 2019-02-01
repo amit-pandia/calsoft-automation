@@ -143,9 +143,9 @@ def verify_bgp_ecmp_load_balancing(module):
     retries = module.params['retries']
     switch_name = module.params['switch_name']
     package_name = module.params['package_name']
-    spine_list = module.params['spine_list']
+    spine_list1 = module.params['spine_list']
     leaf_list = module.params['leaf_list']
-
+    spine_list = spine_list1[:]
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
 
@@ -158,6 +158,7 @@ def verify_bgp_ecmp_load_balancing(module):
         retry = retries
         while (retry):
             RESULT_STATUS = True
+            failure_summary = ''
             # Get all bgp routes
             bgp_cmd = "vtysh -c 'sh ip bgp'"
             bgp_out = execute_commands(module, bgp_cmd)
@@ -166,9 +167,11 @@ def verify_bgp_ecmp_load_balancing(module):
             routes_out = execute_commands(module, routes_cmd)
 
             if bgp_out and routes_out:
-                spine_list.remove(switch_name)
+		spine_list = spine_list1[:]
+                spine_list.remove(str(switch_name))
                 switches_list = spine_list + leaf_list
 
+		routes_to_check = list()
                 for switch in switches_list:
                     routes_to_check.append('192.168.{}.1/32'.format(switch[-2::]))
 
@@ -198,10 +201,10 @@ def verify_bgp_ecmp_load_balancing(module):
                 failure_summary += 'is None'
 
             if not RESULT_STATUS:
-                retry -= 1
-                time.sleep(delay)
+           	 retry -= 1
+                 time.sleep(delay)
             else:
-                break
+                 break
 
     # Store the failure summary in hash
     HASH_DICT['result.detail'] = failure_summary

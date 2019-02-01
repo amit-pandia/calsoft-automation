@@ -339,6 +339,9 @@ def verify_bgp_peering_interface_down(module):
     HASH_DICT['result.detail'] = HASH_DICT['result.detail'] + check_bgp_neighbors(module)[1] + verify_ping(module, self_ip, neighbor_ip)[1]
     RESULT_STATUS = all([RESULT_STATUS, check_bgp_neighbors(module)[0], verify_ping(module, self_ip, neighbor_ip)[0]])
 
+    if not HASH_DICT['result.detail']:
+	RESULT_STATUS = True
+
     # Get the GOES status info
     execute_commands(module, 'goes status')
 

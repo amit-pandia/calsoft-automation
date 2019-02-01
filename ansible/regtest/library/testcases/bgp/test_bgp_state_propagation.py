@@ -178,7 +178,7 @@ def verify_quagga_bgp_state_propagation(module):
     propagate_switch = module.params['propagate_switch']
     eth_list = module.params['eth_list'].split(',')
     delay = module.params['delay']
-    retries = module.params['retries']
+    aretries = module.params['retries']
 
     if switch_name == propagate_switch:
         # Add dummy0 interface
@@ -203,9 +203,9 @@ def verify_quagga_bgp_state_propagation(module):
 
     # Verify bgp routes
     if switch_name != propagate_switch:
-        while retries != 11 and not found:
+        while retries != aretries and not found:
             # Wait 100 secs(max) for routes to become reachable
-            time.sleep(10)
+            time.sleep(delay)
             summary = verify_bgp_routes(module, True)
             if not summary:
                 found = True
@@ -221,11 +221,11 @@ def verify_quagga_bgp_state_propagation(module):
 
     # Bring down few interfaces on propagate switch
     if switch_name == propagate_switch:
-        time.sleep(50)
         for eth in eth_list:
             eth = eth.strip()
             cmd = 'ifconfig xeth{} down'.format(eth)
             execute_commands(module, cmd)
+            time.sleep(10)
 
     retries = 1
     found = False

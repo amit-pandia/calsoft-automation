@@ -154,11 +154,24 @@ def verify_route_advertise(module):
             is_spine = True if switch_name in spine_list else False
             switches_list = leaf_list if is_spine else spine_list
             switches_list.append(switch_name)
+            if is_spine:
+		aleaf_list = leaf_list[:]
+		aleaf_list.remove(switch_name)
+		switches_list.remove(aleaf_list[0])
         else:
             switches_list = spine_list + leaf_list
 
         for switch in switches_list:
             routes_to_check.append('192.168.{}.1/32'.format(switch[-2::]))
+
+#        if switch_name in leaf_list:
+#		leaf_list.remove(switch_name)
+#		print(switch_name)
+#		print(leaf_list)
+#		print('192.168.{}.1/32'.format(leaf_list[0][-2::]))
+#		print(routes_to_check)
+#		raise("Intentional")
+		#routes_to_check.remove('192.168.{}.1/32'.format(leaf_list[0][-2::]))
 
         for route in routes_to_check:
             if route not in bgp_out:
