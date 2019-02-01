@@ -134,7 +134,7 @@ def execute_commands(module, cmd):
 def verify_bgp_prevention(module):
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
-    RESULT_STATUS = True
+    RESULT_STATUS1 = True
     switch_name = module.params['switch_name']
     package_name = module.params['package_name']
     log_file = module.params['log_file']
@@ -170,14 +170,14 @@ def verify_bgp_prevention(module):
 			line = 'denied due to: as-path contains our own as'
 
 			if line not in out.lower():
-			    RESULT_STATUS = False
+			    RESULT_STATUS1 = False
 			    failure_summary += 'On switch {} '.format(switch_name)
 			    failure_summary += 'could not find bgp loop prevention details '
 			    failure_summary += 'in the log file {}\n'.format(log_file)
     except Exception as e:
 	pass
 
-    alist = [True if RESULT_STATUS else False]
+    alist = [True if RESULT_STATUS1 else False]
     alist.append(failure_summary)
     return alist
 
@@ -212,7 +212,7 @@ def verify_bgp_loop_prevention(module):
            time.sleep(delay)
            retry -= 1
 
-    HASH_DICT['result.detail'] = verify_bgp_prevention(module)[1]
+    RESULT_STATUS, HASH_DICT['result.detail'] = verify_bgp_prevention(module)[0], verify_bgp_prevention(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')

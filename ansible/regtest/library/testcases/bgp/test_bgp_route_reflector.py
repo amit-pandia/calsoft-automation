@@ -144,25 +144,25 @@ def verify_rr_client(module, switch_name, network):
     """
     global RESULT_STATUS
     failure_summary = ''
-    RESULT_STATUS = True
+    RESULT_STATUS1 = True
 
     cmd = "vtysh -c 'sh ip bgp {}'".format(network)
     out = execute_commands(module, cmd)
 
     # For errors, update the result status to False
     if out is None or 'error' in out:
-        RESULT_STATUS = False
+        RESULT_STATUS1 = False
         failure_summary += 'On Switch {} '.format(switch_name)
         failure_summary += 'output of command {} is None\n'.format(cmd)
     else:
         if 'received from a rr-client' not in out.lower():
-            RESULT_STATUS = False
+            RESULT_STATUS1 = False
             failure_summary += 'On Switch {} '.format(switch_name)
             failure_summary += 'output of command {} '.format(cmd)
             failure_summary += 'did not display Received from a RR-client '
             failure_summary += 'for network {}\n'.format(network)
 
-    return failure_summary
+    return [RESULT_STATUS1, failure_summary]
 
 
 def verify_advertised_routes(module, switch_name, ip):
@@ -175,7 +175,7 @@ def verify_advertised_routes(module, switch_name, ip):
     """
     global RESULT_STATUS
     failure_summary = ''
-    RESULT_STATUS = True
+    RESULT_STATUS1 = True
     self_network = '192.168.{}.1'.format(switch_name[-2::])
 
     cmd = "vtysh -c 'sh ip bgp neighbors {} advertised-routes'".format(ip)
@@ -183,19 +183,19 @@ def verify_advertised_routes(module, switch_name, ip):
 
     # For errors, update the result status to False
     if out is None or 'error' in out:
-        RESULT_STATUS = False
+        RESULT_STATUS1 = False
         failure_summary += 'On Switch {} '.format(switch_name)
         failure_summary += 'output of command {} is None\n'.format(cmd)
     else:
         if self_network not in out:
-            RESULT_STATUS = False
+            RESULT_STATUS1 = False
             failure_summary += 'On Switch {} '.format(switch_name)
             failure_summary += 'output of command {} did not '.format(cmd)
             failure_summary += 'display advertised network {}\n'.format(
                 self_network
             )
 
-    return failure_summary
+    return [RESULT_STATUS1, failure_summary]
 
 
 def verify_bgp_route_reflector(module):
@@ -212,7 +212,7 @@ def verify_bgp_route_reflector(module):
     package_name = module.params['package_name']
     delay = module.params['delay']
     retries = module.params['retries']
-    
+    alist = list()   
     # Get the current/running configurations
     execute_commands(module, "vtysh -c 'sh running-config'")
 
@@ -223,13 +223,14 @@ def verify_bgp_route_reflector(module):
     if switch_name == reflector_switch:
         while(retries):
             failure_summary = ''
-            RESULT_STATUS = True
+            alist = list()
             for switch in leaf_list:
                 leaf_network.append('192.168.{}.1'.format(switch[-2::]))
 
             # Verify Received from RR client
             for network in leaf_network:
-                failure_summary += verify_rr_client(module, switch_name, network)
+                failure_summary += verify_rr_client(module, switch_name, network)[1]
+		alist.append(verify_rr_client(module, switch_name, network)[0])
 
             # Verify advertised routes
             for line in module.params['config_file'].splitlines():
@@ -237,15 +238,18 @@ def verify_bgp_route_reflector(module):
                 if 'neighbor' in line and 'remote-as' in line:
                     ip = line.split()[1]
                     failure_summary += verify_advertised_routes(
-                        module, switch_name, ip)
+                        module, switch_name, ip)[1]
+		    alist.append(verify_advertised_routes(
+                        module, switch_name, ip)[0])
 
-            if not RESULT_STATUS:
+            if not all(alist):
                 time.sleep(delay)
                 retries -= 1
             else:
                 break
 
     HASH_DICT['result.detail'] = failure_summary
+    RESULT_STATUS = all(alist)
 
     # Get the GOES status info
     execute_commands(module, 'goes status')

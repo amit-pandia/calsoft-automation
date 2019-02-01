@@ -128,7 +128,7 @@ def verify_ip_routes(module):
     converge_switch_config = module.params['converge_switch_config']
 
     global RESULT_STATUS
-    RESULT_STATUS = True
+    RESULT_STATUS1 = True
     failure_summary = ''
     cmd = "vtysh -c 'sh ip route'"
     routes_out = execute_commands(module, cmd)
@@ -137,33 +137,33 @@ def verify_ip_routes(module):
         route = 'B>* 192.168.{}.1'.format(converge_switch[-2::])
 
         if route in routes_out and converge_switch_config == 'absent':
-            RESULT_STATUS = False
+            RESULT_STATUS1 = False
             failure_summary += 'On Switch {} bgp route '.format(switch_name)
             failure_summary += 'for network {} is present '.format(route)
             failure_summary += 'in the output of command {} '.format(cmd)
             failure_summary += 'even after removing this network\n'
 
         elif route not in routes_out and converge_switch_config == 'present':
-            RESULT_STATUS = False
+            RESULT_STATUS1 = False
             failure_summary += 'On Switch {} bgp route '.format(switch_name)
             failure_summary += 'for network {} is absent '.format(route)
             failure_summary += 'in the output of command {} '.format(cmd)
             failure_summary += 'even after presence of this network\n'
 
     else:
-        RESULT_STATUS = False
+        RESULT_STATUS1 = False
         failure_summary += 'On switch {} '.format(switch_name)
         failure_summary += 'bgp convergence cannot be verified '
         failure_summary += 'because output of command {} is None'.format(cmd)
 
-    alist = [True if RESULT_STATUS else False]
+    alist = [True if RESULT_STATUS1 else False]
     alist.append(failure_summary)
     return alist
 
 def verify_ping(module):
 
     global RESULT_STATUS
-    RESULT_STATUS = True
+    RESULT_STATUS1 = True
     failure_summary = ''
     switch_name = module.params['switch_name']
     converge_switch = module.params['converge_switch']
@@ -177,13 +177,13 @@ def verify_ping(module):
         ping_out = execute_commands(module, cmd)
 
         if '100% packet loss' in ping_out:
-            RESULT_STATUS = False
+            RESULT_STATUS1 = False
             failure_summary += 'Ping from switch {} to {}'.format(switch_name, converge_switch)
             failure_summary += ' for {} packets'.format(packet_count)
             failure_summary += ' are not received in the output of '
             failure_summary += 'command {}\n'.format(cmd)
 
-    alist = [True if RESULT_STATUS else False]
+    alist = [True if RESULT_STATUS1 else False]
     alist.append(failure_summary)
     return alist
 
@@ -225,7 +225,7 @@ def verify_bgp_quagga_convergence(module):
                 time.sleep(delay)
                 retry -= 1
 
-    HASH_DICT['result.detail'] = verify_ip_routes(module)[1] + verify_ping(module)[1]
+    RESULT_STATUS, HASH_DICT['result.detail'] = all([verify_ip_routes(module)[0], verify_ping(module)[0]]), verify_ip_routes(module)[1] + verify_ping(module)[1]
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
