@@ -116,7 +116,7 @@ def vnetd_panic(module):
 	failure_summary = ''
 	execute_commands(module, "ip add sh xeth{}".format(xeth))
 	
-	out = execute_commands(module, "ping 10.0.{}.30".format(xeth))
+	out = execute_commands(module, "ping -c 5 10.0.{}.30".format(xeth))
 	if "100% packet loss" in out:
 		RESULT_STATUS = False
 		failure_summary += "100% packet loss occured during ping from {} ".format(module.params['switch_name'])
