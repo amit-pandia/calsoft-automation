@@ -111,7 +111,7 @@
 
 - include: playbooks/ospf/quagga_ospf_traffic.yml
 
-- include: playbooks/ospf/quagga_ospf_multipath_routing.yml
+#- include: playbooks/ospf/quagga_ospf_multipath_routing.yml
 
 
 # Run all quagga isis test cases
