@@ -50,7 +50,8 @@
     - name: Restart networking service and goes
       command: "{{ item }}"
       with_items:
-      - 'service networking restart'
+      - 'ifdown -a --allow vnet'
+      - 'ifup -a --allow vnet'
       - 'goes restart'
 
 
