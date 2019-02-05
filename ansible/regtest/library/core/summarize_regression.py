@@ -103,9 +103,6 @@ def main():
     message = ''
     passed_testcase_list, failed_testcase_list, skipped_testcase_list = '', '', ''
 
-
-
-
     try:
         with open(all_testcase_file, 'r') as f:
             content = f.read()
