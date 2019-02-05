@@ -75,7 +75,7 @@
     - name: Create the html email content
       template:
         src: "templates/email_body.j2"
-        dest: "/tmp/email_body"
+        dest: "{{ playbook_dir }}/email_body"
 
     - copy:
         src: "files/logs.html"
