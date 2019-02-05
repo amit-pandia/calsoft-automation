@@ -82,17 +82,29 @@ def main():
         argument_spec=dict(
             testbed_name=dict(required=False, type='str'),
             playbook_dir=dict(required=False, type='str'),
+            goes_version=dict(required=False, type='str'),
+            goes_tags=dict(required=False, type='str'),
+            kernel_version=dict(required=False, type='str')
         )
     )
 
-    testbed_name =  module.params['testbed_name']
-    playbook_dir =  module.params['playbook_dir']
-    regression_summary_file = '/var/log/regression/regression_summary_file_{}'.format(testbed_name)
+    testbed_name = module.params['testbed_name']
+    playbook_dir = module.params['playbook_dir']
+    g_version = module.params['goes_version'].splitlines()
+    g_tags = module.params['goes_tags'].splitlines()
+    k_version = module.params['kernel_version'].splitlines()
+    goes_version = "\n".join(g_version)
+    goes_tags = "\n".join(g_tags)
+    kernel_version = "\n".join(k_version)
 
+    regression_summary_file = '/var/log/regression/regression_summary_file_{}'.format(testbed_name)
     all_testcase_file = '{}/files/all_testcase_file'.format(playbook_dir)
 
     message = ''
     passed_testcase_list, failed_testcase_list, skipped_testcase_list = '', '', ''
+
+
+
 
     try:
         with open(all_testcase_file, 'r') as f:
@@ -136,7 +148,10 @@ def main():
         failed_count=failed_count,
         failed_list=failed_testcase_list,
         skipped_count=skipped_count,
-        skipped_list=skipped_testcase_list
+        skipped_list=skipped_testcase_list,
+        goes_version=goes_version,
+        goes_tags=goes_tags,
+        kernel_version=kernel_version
     )
 
 

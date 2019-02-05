@@ -49,6 +49,9 @@
       summarize_regression:
         testbed_name: "{{ testbed_name }}"
         playbook_dir: "{{ playbook_dir }}"
+        goes_version: "{{ groups['leaf'][0] }}: {{ hostvars[groups['leaf'][0]].goes_version }}, {{ groups['leaf'][1] }}: {{ hostvars[groups['leaf'][1]].goes_version }}, {{ groups['spine'][0] }}: {{ hostvars[groups['spine'][0]].goes_version }}, {{ groups['spine'][1] }}: {{ hostvars[groups['spine'][1]].goes_version }}"
+        goes_tags: "{{ groups['leaf'][0] }}: {{ hostvars[groups['leaf'][0]].goes_tags }}, {{ groups['leaf'][1] }}: {{ hostvars[groups['leaf'][1]].goes_tags }}, {{ groups['spine'][0] }}: {{ hostvars[groups['spine'][0]].goes_tags }}, {{ groups['spine'][1] }}: {{ hostvars[groups['spine'][1]].goes_tags }}"
+        kernel_version: "{{ groups['leaf'][0] }}: {{ hostvars[groups['leaf'][0]].kernel_version }}, {{ groups['leaf'][1] }}: {{ hostvars[groups['leaf'][1]].kernel_version }}, {{ groups['spine'][0] }}: {{ hostvars[groups['spine'][0]].kernel_version }}, {{ groups['spine'][1] }}: {{ hostvars[groups['spine'][1]].kernel_version }}"
       register: out
 
     - debug:
@@ -65,9 +68,9 @@
         skipped_list: "{{ out.skipped_list }}"
         leaf_list: "{{ groups['leaf'] }} "
         spine_list: "{{ groups['spine'] }}"
-        goes_version: "{{ groups['leaf'][0] }}: {{ hostvars[groups['leaf'][0]].goes_version }}, {{ groups['leaf'][1] }}: {{ hostvars[groups['leaf'][1]].goes_version }}, {{ groups['spine'][0] }}: {{ hostvars[groups['spine'][0]].goes_version }}, {{ groups['spine'][1] }}: {{ hostvars[groups['spine'][1]].goes_version }}"
-        goes_tags: "{{ groups['leaf'][0] }}: {{ hostvars[groups['leaf'][0]].goes_tags }}, {{ groups['leaf'][1] }}: {{ hostvars[groups['leaf'][1]].goes_tags }}, {{ groups['spine'][0] }}: {{ hostvars[groups['spine'][0]].goes_tags }}, {{ groups['spine'][1] }}: {{ hostvars[groups['spine'][1]].goes_tags }}"
-        kernel_version: "{{ groups['leaf'][0] }}: {{ hostvars[groups['leaf'][0]].kernel_version }}, {{ groups['leaf'][1] }}: {{ hostvars[groups['leaf'][1]].kernel_version }}, {{ groups['spine'][0] }}: {{ hostvars[groups['spine'][0]].kernel_version }}, {{ groups['spine'][1] }}: {{ hostvars[groups['spine'][1]].kernel_version }}"
+        goes_version: "{{ out.goes_version }}"
+        goes_tags: "{{ out.goes_tags }}"
+        kernel_version: "{{ out.kernel_version }}"
 
     - name: Create the html email content
       template:
