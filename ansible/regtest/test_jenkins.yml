@@ -47,7 +47,7 @@
   tasks:
     - name: Summarize the regerssion suite result
       summarize_regression:
-        testbed_name: {{ testbed_name }}
+        testbed_name: "{{ testbed_name }}"
       register: out
 
     - set_fact:
