@@ -93,9 +93,9 @@ def main():
     g_version = module.params['goes_version'].split('\n')
     g_tags = module.params['goes_tags'].split('\n')
     k_version = module.params['kernel_version'].split('\n')
-    goes_version = "\n".join(g_version)
-    goes_tags = "\n".join(g_tags)
-    kernel_version = "\n".join(k_version)
+    goes_version = "\\n".join(g_version)
+    goes_tags = "\\n".join(g_tags)
+    kernel_version = "\\n".join(k_version)
 
     regression_summary_file = '/var/log/regression/regression_summary_file_{}'.format(testbed_name)
     all_testcase_file = '{}/files/all_testcase_file'.format(playbook_dir)
