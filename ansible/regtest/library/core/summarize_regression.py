@@ -126,13 +126,13 @@ def main():
 
     for line in all_testcase_list:
         if line not in regression_summary_report:
-            skipped_testcase_list = '<li>{}</li>'.format(line)
+            skipped_testcase_list += '<li>{}</li>'.format(line)
 
     for line in regression_summary_report:
         if 'Passed' in line:
-            passed_testcase_list = '<li><a href="logs.html">{}</a></li>'.format(line)
+            passed_testcase_list += '<li><a href="logs.html">{}</a></li>'.format(line)
         elif 'Failed' in line:
-            failed_testcase_list = '<li><a href="logs.html">{}</a></li>'.format(line)
+            failed_testcase_list += '<li><a href="logs.html">{}</a></li>'.format(line)
 
     passed_count = len(passed_testcase_list)
     failed_count = len(failed_testcase_list)
