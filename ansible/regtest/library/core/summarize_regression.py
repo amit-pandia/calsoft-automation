@@ -125,6 +125,7 @@ def main():
         )
 
     for line in all_testcase_list:
+        line = line.strip()
         if line not in regression_summary_report:
             skipped_testcase_list += '<li>{}</li>'.format(line)
             skipped_count += 1
