@@ -48,6 +48,7 @@
     - name: Summarize the regerssion suite result
       summarize_regression:
         testbed_name: "{{ testbed_name }}"
+        playbook_dir: "{{ playbook_dir }}"
       register: out
 
     - debug:

@@ -81,13 +81,15 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             testbed_name=dict(required=False, type='str'),
+            playbook_dir=dict(required=False, type='str'),
         )
     )
 
     testbed_name =  module.params['testbed_name']
+    playbook_dir =  module.params['playbook_dir']
     regression_summary_file = '/var/log/regression/regression_summary_file_{}'.format(testbed_name)
 
-    all_testcase_file = 'files/all_testcase_file'
+    all_testcase_file = '{}files/all_testcase_file'.format(playbook_dir)
 
     message = ''
     passed_testcase_list, failed_testcase_list, skipped_testcase_list = '', '', ''
