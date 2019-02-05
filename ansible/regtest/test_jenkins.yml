@@ -49,9 +49,9 @@
       summarize_regression:
         testbed_name: "{{ testbed_name }}"
         playbook_dir: "{{ playbook_dir }}"
-        goes_version: "<b>{{ groups['leaf'][0] }}:</b><br> {{ hostvars[groups['leaf'][0]].goes_version }}, <b>{{ groups['leaf'][1] }}:</b><br> {{ hostvars[groups['leaf'][1]].goes_version }}, <b>{{ groups['spine'][0] }}:</b><br> {{ hostvars[groups['spine'][0]].goes_version }}, <b>{{ groups['spine'][1] }}:</b><br> {{ hostvars[groups['spine'][1]].goes_version }}"
-        goes_tags: "<b>{{ groups['leaf'][0] }}:</b><br> {{ hostvars[groups['leaf'][0]].goes_tags }}, <b>{{ groups['leaf'][1] }}:</b><br> {{ hostvars[groups['leaf'][1]].goes_tags }}, <b>{{ groups['spine'][0] }}:</b><br> {{ hostvars[groups['spine'][0]].goes_tags }}, <b>{{ groups['spine'][1] }}:</b><br> {{ hostvars[groups['spine'][1]].goes_tags }}"
-        kernel_version: "<b>{{ groups['leaf'][0] }}:</b><br> {{ hostvars[groups['leaf'][0]].kernel_version }}, <b>{{ groups['leaf'][1] }}:</b><br> {{ hostvars[groups['leaf'][1]].kernel_version }}, <b>{{ groups['spine'][0] }}:</b><br> {{ hostvars[groups['spine'][0]].kernel_version }}, <b>{{ groups['spine'][1] }}:</b><br> {{ hostvars[groups['spine'][1]].kernel_version }}"
+        goes_version: "<br><b>{{ groups['leaf'][0] }}:</b> {{ hostvars[groups['leaf'][0]].goes_version }}, <br><b>{{ groups['leaf'][1] }}:</b> {{ hostvars[groups['leaf'][1]].goes_version }}, <br><b>{{ groups['spine'][0] }}:</b> {{ hostvars[groups['spine'][0]].goes_version }}, <br><b>{{ groups['spine'][1] }}:</b> {{ hostvars[groups['spine'][1]].goes_version }}"
+        goes_tags: "<br><b>{{ groups['leaf'][0] }}:</b> {{ hostvars[groups['leaf'][0]].goes_tags }}, <br><b>{{ groups['leaf'][1] }}:</b> {{ hostvars[groups['leaf'][1]].goes_tags }}, <br><b>{{ groups['spine'][0] }}:</b> {{ hostvars[groups['spine'][0]].goes_tags }}, <br><b>{{ groups['spine'][1] }}:</b> {{ hostvars[groups['spine'][1]].goes_tags }}"
+        kernel_version: "<br><b>{{ groups['leaf'][0] }}:</b> {{ hostvars[groups['leaf'][0]].kernel_version }}, <br><b>{{ groups['leaf'][1] }}:</b> {{ hostvars[groups['leaf'][1]].kernel_version }}, <br><b>{{ groups['spine'][0] }}:</b> {{ hostvars[groups['spine'][0]].kernel_version }}, <br><b>{{ groups['spine'][1] }}:</b> {{ hostvars[groups['spine'][1]].kernel_version }}"
       register: out
 
     - debug:
