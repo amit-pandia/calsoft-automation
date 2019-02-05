@@ -87,12 +87,10 @@ def main():
     testbed_name =  module.params['testbed_name']
     regression_summary_file = '/var/log/regression/regression_summary_file_{}'.format(testbed_name)
 
-    var_file = 'var_file.txt'
-    all_testcase_file = '/home/abhishek/platina/go/ansible/regtest/all_testcase_file'
+    all_testcase_file = 'files/all_testcase_file'
 
     message = ''
     passed_testcase_list, failed_testcase_list, skipped_testcase_list = '', '', ''
-    passed_count, failed_count, skipped_count = '', '', ''
 
     try:
         with open(all_testcase_file, 'r') as f:
