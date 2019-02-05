@@ -90,9 +90,9 @@ def main():
 
     testbed_name = module.params['testbed_name']
     playbook_dir = module.params['playbook_dir']
-    g_version = module.params['goes_version'].splitlines()
-    g_tags = module.params['goes_tags'].splitlines()
-    k_version = module.params['kernel_version'].splitlines()
+    g_version = module.params['goes_version'].split('\n')
+    g_tags = module.params['goes_tags'].split('\n')
+    k_version = module.params['kernel_version'].split('\n')
     goes_version = "\n".join(g_version)
     goes_tags = "\n".join(g_tags)
     kernel_version = "\n".join(k_version)
