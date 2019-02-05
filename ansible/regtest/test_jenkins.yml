@@ -65,9 +65,9 @@
         skipped_list: "{{ out.skipped_list }}"
         leaf_list: "{{ groups['leaf'] }} "
         spine_list: "{{ groups['spine'] }}"
-        goes_version: "{{ hostvars['leaf[0]']['goes_version'] }}, {{ hostvars['leaf[1]']['goes_version'] }}, {{ hostvars['spine[0]']['goes_version'] }}, {{ hostvars['spine[1]']['goes_version'] }},"
-        goes_tags: "{{ hostvars['leaf[0]']['goes_tags'] }}, {{ hostvars['leaf[1]']['goes_tags'] }}, {{ hostvars['spine[0]']['goes_tags'] }}, {{ hostvars['spine[1]']['goes_tags'] }},"
-        kernel_version: "{{ hostvars['leaf[0]']['kernel_version'] }}, {{ hostvars['leaf[1]']['kernel_version'] }}, {{ hostvars['spine[0]']['kernel_version'] }}, {{ hostvars['spine[1]']['kernel_version'] }},"
+        goes_version: "{{ groups['leaf'][0] }}: {{ hostvars[groups['leaf'][0]].goes_version }}, {{ groups['leaf'][1] }}: {{ hostvars[groups['leaf'][1]].goes_version }}, {{ groups['spine'][0] }}: {{ hostvars[groups['spine'][0]].goes_version }}, {{ groups['spine'][1] }}: {{ hostvars[groups['spine'][1]].goes_version }}"
+        goes_tags: "{{ groups['leaf'][0] }}: {{ hostvars[groups['leaf'][0]].goes_tags }}, {{ groups['leaf'][1] }}: {{ hostvars[groups['leaf'][1]].goes_tags }}, {{ groups['spine'][0] }}: {{ hostvars[groups['spine'][0]].goes_tags }}, {{ groups['spine'][1] }}: {{ hostvars[groups['spine'][1]].goes_tags }}"
+        kernel_version: "{{ groups['leaf'][0] }}: {{ hostvars[groups['leaf'][0]].kernel_version }}, {{ groups['leaf'][1] }}: {{ hostvars[groups['leaf'][1]].kernel_version }}, {{ groups['spine'][0] }}: {{ hostvars[groups['spine'][0]].kernel_version }}, {{ groups['spine'][1] }}: {{ hostvars[groups['spine'][1]].kernel_version }}"
 
     - name: Create the html email content
       template:
