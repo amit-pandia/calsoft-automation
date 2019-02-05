@@ -50,6 +50,9 @@
         testbed_name: "{{ testbed_name }}"
       register: out
 
+    - debug:
+        var: out
+
     - set_fact:
         build: "{{ build_no }}"
         toe: "{{ time }}"
