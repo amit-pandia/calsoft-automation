@@ -11,10 +11,6 @@
       debug:
         var: goes.stdout
 
-    - name: Check summary report for failures
-      fail:
-        msg: "Regression Failed"
-
     - name: Get GoES version details
       shell: "goes version"
       register: goes_version
