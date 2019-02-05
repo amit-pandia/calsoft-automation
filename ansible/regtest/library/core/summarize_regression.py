@@ -89,7 +89,7 @@ def main():
     playbook_dir =  module.params['playbook_dir']
     regression_summary_file = '/var/log/regression/regression_summary_file_{}'.format(testbed_name)
 
-    all_testcase_file = '{}files/all_testcase_file'.format(playbook_dir)
+    all_testcase_file = '{}/files/all_testcase_file'.format(playbook_dir)
 
     message = ''
     passed_testcase_list, failed_testcase_list, skipped_testcase_list = '', '', ''
