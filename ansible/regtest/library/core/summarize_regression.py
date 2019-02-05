@@ -102,7 +102,7 @@ def main():
 
     message = ''
     passed_testcase_list, failed_testcase_list, skipped_testcase_list = '', '', ''
-
+    skipped_count, passed_count, failed_count = 0, 0, 0
     try:
         with open(all_testcase_file, 'r') as f:
             content = f.read()
@@ -127,16 +127,15 @@ def main():
     for line in all_testcase_list:
         if line not in regression_summary_report:
             skipped_testcase_list += '<li>{}</li>'.format(line)
+            skipped_count += 1
 
     for line in regression_summary_report:
         if 'Passed' in line:
             passed_testcase_list += '<li><a href="logs.html">{}</a></li>'.format(line)
+            passed_count += 1
         elif 'Failed' in line:
             failed_testcase_list += '<li><a href="logs.html">{}</a></li>'.format(line)
-
-    passed_count = len(passed_testcase_list)
-    failed_count = len(failed_testcase_list)
-    skipped_count = len(skipped_testcase_list)
+            failed_count += 1
 
     # Exit the module and return the required JSON.
     module.exit_json(
