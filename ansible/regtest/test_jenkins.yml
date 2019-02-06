@@ -78,18 +78,18 @@
 
     - copy:
         src: "files/logs.html"
-        dest: "/var/www/html/logs.html"
+        dest: "/var/www/html/regression_logs/logs.html"
 
     - template:
         src: "templates/passed_list.j2"
-        dest: "/var/www/html/passed_list_{{ build }}.html"
+        dest: "/var/www/html/regression_logs/passed_list_{{ build }}.html"
 
     - template:
         src: "templates/failed_list.j2"
-        dest: "/var/www/html/failed_list_{{ build }}.html"
+        dest: "/var/www/html/regression_logs/failed_list_{{ build }}.html"
 
     - template:
         src: "templates/skipped_list.j2"
-        dest: "/var/www/html/skipped_list_{{ build }}.html"
+        dest: "/var/www/html/regression_logs/skipped_list_{{ build }}.html"
 
 
