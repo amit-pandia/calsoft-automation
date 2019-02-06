@@ -133,10 +133,10 @@ def main():
 
     for line in regression_summary_report:
         if 'Passed' in line:
-            passed_testcase_list += '<li><a href="logs.html">{}</a></li>'.format(line)
+            passed_testcase_list += '<li><a href="http://172.17.2.28:9091/logs.html">{}</a></li>'.format(line)
             passed_count += 1
         elif 'Failed' in line:
-            failed_testcase_list += '<li><a href="logs.html">{}</a></li>'.format(line)
+            failed_testcase_list += '<li><a href="http://172.17.2.28:9091/logs.html">{}</a></li>'.format(line)
             failed_count += 1
 
     # Exit the module and return the required JSON.
