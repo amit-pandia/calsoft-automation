@@ -114,6 +114,7 @@ def main():
     try:
         with open(regression_summary_file, 'r') as f:
             content = f.read()
+        regression_summary_content = content
         regression_summary_report = content.splitlines()
 
     except IOError:
@@ -126,7 +127,7 @@ def main():
 
     for line in all_testcase_list:
         line = line.strip()
-        if line not in regression_summary_report:
+        if line not in regression_summary_content:
             skipped_testcase_list += '<li>{}</li>'.format(line)
             skipped_count += 1
 
