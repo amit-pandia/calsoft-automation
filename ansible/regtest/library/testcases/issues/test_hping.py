@@ -124,11 +124,12 @@ def execute_commands(module, cmd):
 def verify_ping(module):
 	global RESULT_STATUS, failure_summary
 	failure_summary = ''
+        switch_name = module.params['switch_name']
 	switch_name1 = module.params['switch_name1']
 	switch_name2 = module.params['switch_name2']
 	spine_list = module.params['spine_list']
 
-	if switch_name1 in spine_list:
+	if switch_name in spine_list:
 		ip1 = "10.0.5.{}".format(switch_name1[-2::])
 		ip2 = "10.0.5.{}".format(switch_name2[-2::])
 	else:
@@ -136,18 +137,19 @@ def verify_ping(module):
 		ip1 = "10.0.5.{}".format(switch_name2[-2::])
 
 	cmd1 = "ping -c 5 -I {} {}".format(ip1, ip2)
-	cmd2 = "sudo timeout 5 hping3 --icmp --faster -t 1 {}".format(ip2)
+	cmd2 = "timeout 5 hping3 -c 5 --icmp --faster -t 1 {}".format(ip2)
 
-    out1 = execute_commands(module, cmd1)
+        out1 = execute_commands(module, cmd1)
 	if "100% packet loss" in out1:
 		RESULT_STATUS = False
 		failure_summary += "ping from {} to ".format(ip1)
 		failure_summary += "{} is not working.\n".format(ip2)
 
 	out2 = execute_commands(module, cmd2)
-	if "100% packet loss" in out2:
+        #time.sleep(5)
+	if len(out2.splitlines()) < 10:
 		RESULT_STATUS = False
-		failure_summary += "hping from {} to ".format(switch_name1[-2::])
+		failure_summary += "hping from {} to ".format(switch_name[-2::])
 		failure_summary += "{} is not working.\n".format(ip2)
 
 	HASH_DICT['result.detail'] = failure_summary
@@ -157,16 +159,17 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
+ 	    switch_name=dict(required=False, type='str'),
             switch_name1=dict(required=False, type='str'),
-	        switch_name2=dict(required=False, type='str'),
-	        spine_list=dict(required=False, type='list'),
+	    switch_name2=dict(required=False, type='str'),
+	    spine_list=dict(required=False, type='list'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
-
+    verify_ping(module)
     # Create a log file
     log_file_path = module.params['log_dir_path']
     log_file_path += '/{}.log'.format(module.params['hash_name'])
