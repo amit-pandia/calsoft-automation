@@ -68,7 +68,7 @@
       register: out
 
     - set_fact:
-        build: "{{ build_no }}"
+        build: "{{ main_job_build }}"
         toe: "{{ time }}"
         passed_count: "{{ out.passed_count }}"
         passed_list: "{{ out.passed_list }}"
