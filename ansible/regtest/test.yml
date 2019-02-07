@@ -11,6 +11,10 @@
       debug:
         var: goes.stdout
 
+    - name: Wait few seconds for GOES to come up
+      pause:
+        seconds: 300
+
 
 - hosts: server_emulator
   become: true
