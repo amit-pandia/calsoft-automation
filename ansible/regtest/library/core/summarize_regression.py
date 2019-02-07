@@ -57,25 +57,6 @@ hash_dict:
 """
 
 
-# def run_cli(module, cli):
-#     """
-#     Method to execute the cli command on the target node(s) and
-#     returns the output.
-#     :param module: The Ansible module to fetch input parameters.
-#     :param cli: The complete cli string to be executed on the target node(s).
-#     :return: Output/Error or None depending upon the response from cli.
-#     """
-#     cli = shlex.split(cli)
-#     rc, out, err = module.run_command(cli)
-#
-#     if out:
-#         return out.rstrip()
-#     elif err:
-#         return err.rstrip()
-#     else:
-#         return None
-
-
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
@@ -114,7 +95,6 @@ def main():
     try:
         with open(regression_summary_file, 'r') as f:
             content = f.read()
-        regression_summary_content = content
         regression_summary_report = content.splitlines()
 
     except IOError:
@@ -125,18 +105,21 @@ def main():
             message=message
         )
 
-    for line in all_testcase_list:
-        line = line.strip()
-        if line not in regression_summary_content:
-            skipped_testcase_list += '<li>{}</li>'.format(line)
+    for line1 in all_testcase_list:
+        found = False
+        for line2 in regression_summary_report:
+            if line1 == line2[:-25]:
+                found = True
+        if not found:
+            skipped_testcase_list += '<li>{}</li>'.format(line1)
             skipped_count += 1
 
     for line in regression_summary_report:
         if 'Passed' in line:
-            passed_testcase_list += '<li><a href="http://172.17.2.28:9091/logs.html">{}</a></li>'.format(line)
+            passed_testcase_list += '<li><a href="http://172.17.2.28/regression_logs/logs.html">{}</a></li>'.format(line)
             passed_count += 1
         elif 'Failed' in line:
-            failed_testcase_list += '<li><a href="http://172.17.2.28:9091/logs.html">{}</a></li>'.format(line)
+            failed_testcase_list += '<li><a href="http://172.17.2.28/regression_logs/logs.html">{}</a></li>'.format(line)
             failed_count += 1
 
     # Exit the module and return the required JSON.
