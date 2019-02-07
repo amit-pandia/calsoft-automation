@@ -47,17 +47,6 @@
       debug:
         var: summary_report.stdout_lines
 
-    - name: Get failure summary of Failed test cases
-      get_failure_summary:
-        summary_report_file: "{{ lookup('file', '{{ regression_summary_report }}') }}"
-      register: failure_summary
-      when: summary_report.stdout.find('Failed') != -1
-
-    - name: Print failure summary of Failed test cases
-      debug:
-        var: failure_summary.stdout_lines
-      when: summary_report.stdout.find('Failed') != -1
-
     - name: Summarize the regerssion suite result
       summarize_regression:
         testbed_name: "{{ testbed_name }}"

@@ -13,7 +13,7 @@
 
     - name: Wait few seconds for GOES to come up
       pause:
-        seconds: 300
+        seconds: 120
 
 
 - hosts: server_emulator
