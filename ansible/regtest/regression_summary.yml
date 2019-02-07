@@ -29,6 +29,11 @@
       debug:
         var: kernel_version.stdout_lines
 
+    - set_fact:
+        goes_version: "{{ goes_version.stdout }}"
+        goes_tags: "{{ goes_tags.stdout }}"
+        kernel_version: "{{ kernel_version.stdout }}"
+
 
 - hosts: server_emulator
   become: true
@@ -52,6 +57,50 @@
       debug:
         var: failure_summary.stdout_lines
       when: summary_report.stdout.find('Failed') != -1
+
+    - name: Summarize the regerssion suite result
+      summarize_regression:
+        testbed_name: "{{ testbed_name }}"
+        playbook_dir: "{{ playbook_dir }}"
+        goes_version: "<br><b>{{ groups['leaf'][0] }}:</b> {{ hostvars[groups['leaf'][0]].goes_version }}, <br><b>{{ groups['leaf'][1] }}:</b> {{ hostvars[groups['leaf'][1]].goes_version }}, <br><b>{{ groups['spine'][0] }}:</b> {{ hostvars[groups['spine'][0]].goes_version }}, <br><b>{{ groups['spine'][1] }}:</b> {{ hostvars[groups['spine'][1]].goes_version }}"
+        goes_tags: "<br><b>{{ groups['leaf'][0] }}:</b> {{ hostvars[groups['leaf'][0]].goes_tags }}, <br><b>{{ groups['leaf'][1] }}:</b> {{ hostvars[groups['leaf'][1]].goes_tags }}, <br><b>{{ groups['spine'][0] }}:</b> {{ hostvars[groups['spine'][0]].goes_tags }}, <br><b>{{ groups['spine'][1] }}:</b> {{ hostvars[groups['spine'][1]].goes_tags }}"
+        kernel_version: "<br><b>{{ groups['leaf'][0] }}:</b> {{ hostvars[groups['leaf'][0]].kernel_version }}, <br><b>{{ groups['leaf'][1] }}:</b> {{ hostvars[groups['leaf'][1]].kernel_version }}, <br><b>{{ groups['spine'][0] }}:</b> {{ hostvars[groups['spine'][0]].kernel_version }}, <br><b>{{ groups['spine'][1] }}:</b> {{ hostvars[groups['spine'][1]].kernel_version }}"
+      register: out
+
+    - set_fact:
+        build: "{{ build_no }}"
+        toe: "{{ time }}"
+        passed_count: "{{ out.passed_count }}"
+        passed_list: "{{ out.passed_list }}"
+        failed_count: "{{ out.failed_count }}"
+        failed_list: "{{ out.failed_list }}"
+        skipped_count: "{{ out.skipped_count }}"
+        skipped_list: "{{ out.skipped_list }}"
+        invader_list: "{{ groups['leaf'][0] }}, {{ groups['leaf'][1] }}, {{ groups['spine'][0] }}, {{ groups['spine'][1] }}, "
+        goes_version: "{{ out.goes_version }}"
+        goes_tags: "{{ out.goes_tags }}"
+        kernel_version: "{{ out.kernel_version }}"
+
+    - name: Create the html email content
+      template:
+        src: "templates/email_body.j2"
+        dest: "{{ playbook_dir }}/email_body"
+
+    - copy:
+        src: "files/logs.html"
+        dest: "/var/www/html/regression_logs/logs.html"
+
+    - template:
+        src: "templates/passed_list.j2"
+        dest: "/var/www/html/regression_logs/passed_list_{{ build }}.html"
+
+    - template:
+        src: "templates/failed_list.j2"
+        dest: "/var/www/html/regression_logs/failed_list_{{ build }}.html"
+
+    - template:
+        src: "templates/skipped_list.j2"
+        dest: "/var/www/html/regression_logs/skipped_list_{{ build }}.html"
 
     - name: Check summary report for failures
       fail:
