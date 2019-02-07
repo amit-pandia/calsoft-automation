@@ -159,7 +159,7 @@ def main():
                 failure_summary += 'goes status is not ok.\n'
 
     if module.params['is_network_status']:
-        network_status = execute_commands(module, '/etc /init.d/networking status')
+        network_status = execute_commands(module, '/etc/init.d/networking status')
         if 'active' not in network_status:
             RESULT_STATUS = False
             failure_summary += 'On switch {} '.format(module.params['switch_name'])

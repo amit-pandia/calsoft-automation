@@ -42,6 +42,7 @@
 
     - name: Verify ping and hping between links
       test_hping:
+        switch_name: "{{ inventory_hostname }}"
         switch_name1: "{{ groups['spine'][0] }}"
         switch_name2: "{{ groups['leaf'][0] }}"
         spine_list: "{{ groups['spine'] }}"
