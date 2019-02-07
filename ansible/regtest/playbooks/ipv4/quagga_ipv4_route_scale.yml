@@ -44,6 +44,10 @@
       - 'ifup -a --allow vnet'
       - 'goes restart'
 
+    - name: Wait few seconds for GOES to come up
+      pause:
+        seconds: 20
+
     - file:
         path: "{{ ipv4_log_dir }}"
         state: directory
