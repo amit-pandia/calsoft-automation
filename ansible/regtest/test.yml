@@ -1,0 +1,30 @@
+---
+
+- hosts: leaf:spine
+  become: true
+  tasks:
+    - name: Get goes status
+      command: goes status
+      register: goes
+
+    - name: Print goes status
+      debug:
+        var: goes.stdout
+
+
+- hosts: server_emulator
+  become: true
+  gather_facts: no
+  tasks:
+    - name: Get the summary report
+      shell: cat "{{ regression_summary_report }}"
+      register: summary_report
+
+    - name: Print summary report
+      debug:
+        var: summary_report.stdout_lines
+
+    - name: Check summary report for failure
+      fail:
+        msg: "Regression Failed"
+      when: summary_report.stdout.find('Failed') != -1
