@@ -122,6 +122,12 @@ def main():
             failed_testcase_list += '<li><a href="http://172.17.2.28/regression_logs/logs.html">{}</a></li>'.format(line)
             failed_count += 1
 
+    total_count = failed_count + passed_count
+    failure_percent = float(failed_count*100)/total_count
+    failure_percent = round(failure_percent, 2)
+
+    subject = 'Regression Status- Failure {}%, {} out of {} test cases failed'.format(failure_percent, failed_count, total_count)
+
     # Exit the module and return the required JSON.
     module.exit_json(
         passed_count=passed_count,
@@ -132,7 +138,8 @@ def main():
         skipped_list=skipped_testcase_list,
         goes_version=goes_version,
         goes_tags=goes_tags,
-        kernel_version=kernel_version
+        kernel_version=kernel_version,
+        subject=subject
     )
 
 

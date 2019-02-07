@@ -76,10 +76,12 @@
         failed_list: "{{ out.failed_list }}"
         skipped_count: "{{ out.skipped_count }}"
         skipped_list: "{{ out.skipped_list }}"
+        subject: "{{ out.subject }}"
         invader_list: "{{ groups['leaf'][0] }}, {{ groups['leaf'][1] }}, {{ groups['spine'][0] }}, {{ groups['spine'][1] }}, "
         goes_version: "{{ out.goes_version }}"
         goes_tags: "{{ out.goes_tags }}"
         kernel_version: "{{ out.kernel_version }}"
+        host_file: "{{ host_file }}"
 
     - name: Create the html email content
       template:
