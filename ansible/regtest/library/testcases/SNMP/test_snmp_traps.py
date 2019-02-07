@@ -107,20 +107,31 @@ def snmp_trap(module, restart):
    log_path = module.params['log_path']
    switch = module.params['switch_name']
    package = module.params['package_name']
+   delay = module.params['delay']
+   retries = module.params['retries']
 
-   with open(log_path) as fd:
-	afile = fd.read()
+   while(retries):
+       RESULT_STATUS = True
+       failure_summary = ''
+       with open(log_path) as fd:
+        afile = fd.read()
 
-   with open(log_path, 'w') as fd:
-        pass
+       with open(log_path, 'w') as fd:
+            pass
 
-   oid_list = ["linkDown", "linkUp", "coldStart"]
+       oid_list = ["OID: SNMPv2-MIB::coldStart", "OID: NET-SNMP-MIB::netSnmpNotificationPrefix"]
 
-   for oid in oid_list:
-        if not oid in afile:
-                RESULT_STATUS = False
-                failure_summary += "OID MIB::{} is not present in {} file on {}".format(oid, log_path, switch)
-                failure_summary += " {} {} restart.\n".format(restart, package)
+       for oid in oid_list:
+            if not oid in afile:
+                    RESULT_STATUS = False
+                    failure_summary += "OID MIB::{} is not present in {} file on {}".format(oid, log_path, switch)
+                    failure_summary += " {} {} restart.\n".format(restart, package)
+
+       if not RESULT_STATUS:
+           retries -= 1
+           time.sleep(delay)
+       else:
+           break
 
    HASH_DICT['result.detail'] = failure_summary
 
@@ -134,6 +145,9 @@ def main():
             restart=dict(required=False, type='str'),
 	    hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )
 
