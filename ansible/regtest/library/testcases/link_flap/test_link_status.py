@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" Test/Verify GOBGP Convergence """
+""" Test link status """
 
 #
 # This file is part of Ansible
@@ -20,41 +20,23 @@
 
 import shlex
 
-import time
-
 from collections import OrderedDict
-
+import time
 from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: test_gobgp_convergence
+module: test_link_status
 author: Platina Systems
-short_description: Module to test and verify gobgp convergence.
+short_description: Module to test and verify bgp configurations.
 description:
-    Module to test and verify gobgp convergence and log the same.
+    Module to test and verify bgp configurations and log the same.
 options:
     switch_name:
       description:
         - Name of the switch on which tests will be performed.
       required: False
       type: str
-    package_name:
-      description:
-        - Name of the package installed (e.g. gobgpd).
-      required: False
-      type: str
-    leaf:
-      description:
-        - Name of the leaf node on which add/remove routes is performed.
-      required: False
-      type: str
-    route_present:
-      description:
-        - Flag to indicate if we need to check if routes are present or not.
-      required: False
-      type: bool
-      default: False
     hash_name:
       description:
         - Name of the hash in which to store the result in redis.
@@ -68,10 +50,9 @@ options:
 """
 
 EXAMPLES = """
-- name: Verify gobgp convergence
-  test_gobgp_convergence:
+- name: Verify link status
+  test_link_status:
     switch_name: "{{ inventory_hostname }}"
-    leaf: "{{ groups['leaf'][1] }}"
     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
     log_dir_path: "{{ log_dir_path }}"
 """
@@ -129,70 +110,20 @@ def execute_commands(module, cmd):
     return out
 
 
-def verify_gobgp_convergence(module):
-    """
-    Method to verify gobgp convergence.
-    :param module: The Ansible module to fetch input parameters.
-    """
-    global RESULT_STATUS, HASH_DICT
-    failure_summary = ''
-    switch_name = module.params['switch_name']
-    package_name = module.params['package_name']
-    leaf = module.params['leaf']
-    route_present = module.params['route_present']
-    delay = module.params['delay']
-    retries = module.params['retries']
+def verify_link_status(module):
+	global RESULT_STATUS, HASH_DICT
+	failure_summary = ''
+	aname = module.params['switch_name']
+	eth_list = [3,5,7,9,11,13,15,17,19,21,23,25,27,29,31]
+	for eth in eth_list:
+	        out = execute_commands(module, "goes hget platina-mk1 link |grep vnet.xeth{}.link".format(eth))
+		if "true" not in out:
+			RESULT_STATUS = False
+			failure_summary += "xeth{} link status is not true after ink flapping on invader{}.\n".format(eth, aname)
 
-    route = '192.168.{}.1/32'.format(leaf[-2::])
+	execute_commands(module, 'goes status')
 
-    # Get the gobgp config
-    execute_commands(module, 'cat /etc/gobgp/gobgpd.conf')
-
-    # Restart and check package status
-    execute_commands(module, 'service {} restart'.format(package_name))
-    execute_commands(module, 'service {} status'.format(package_name))
-
-    # Get gobgp neighbors
-    cmd = 'gobgp nei'
-    execute_commands(module, cmd)
-
-    # Get all advertised routes
-    cmd = "vtysh -c 'sh ip route'"
-    all_routes = execute_commands(module, cmd)
-
-    while(retries):
-        failure_summary = ''
-        RESULT_STATUS = True
-        if all_routes:
-            if route_present:
-                if route not in all_routes:
-                    RESULT_STATUS = False
-                    failure_summary += 'On switch {} '.format(switch_name)
-                    failure_summary += 'route to network {} '.format(route)
-                    failure_summary += 'is not present even after adding the route\n'
-            else:
-                if route in all_routes:
-                    RESULT_STATUS = False
-                    failure_summary += 'On switch {} '.format(switch_name)
-                    failure_summary += 'route to network {} '.format(route)
-                    failure_summary += 'is present even after deleting the route\n'
-        else:
-            RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'result cannot be verified since '
-            failure_summary += 'output of command {} is None'.format(cmd)
-
-        if not RESULT_STATUS:
-            retries -= 1
-            time.sleep(delay)
-        else:
-            break
-
-    # Store the failure summary in hash
-    HASH_DICT['result.detail'] = failure_summary
-
-    # Get the GOES status info
-    execute_commands(module, 'goes status')
+	HASH_DICT['result.detail'] = failure_summary
 
 
 def main():
@@ -200,37 +131,20 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
-            package_name=dict(required=False, type='str'),
-            leaf=dict(required=False, type='str'),
-            route_present=dict(required=False, type='bool', default=False),
-            hash_name=dict(required=False, type='str'),
-            log_dir_path=dict(required=False, type='str'),
-            delay=dict(required=False, type='int', default=10),
+	    delay=dict(required=False, type='int', default=10),
             retries=dict(required=False, type='int', default=6),
             dry_run_mode=dict(required=False, type='bool', default=False),
+            hash_name=dict(required=False, type='str'),
+            log_dir_path=dict(required=False, type='str'),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
     if module.params['dry_run_mode']:
-        package_name = module.params['package_name']
-        # Get the gobgp config
-        execute_commands(module, 'cat /etc/gobgp/gobgpd.conf')
-
-        # Restart and check package status
-        execute_commands(module, 'service {} restart'.format(package_name))
-        execute_commands(module, 'service {} status'.format(package_name))
-
-        # Get gobgp neighbors
-        cmd = 'gobgp nei'
-        execute_commands(module, cmd)
-
-        # Get all advertised routes
-        cmd = "vtysh -c 'sh ip route'"
-        execute_commands(module, cmd)
+	module.params['switch_name']
+        cmds_list = []
 
         execute_commands(module, 'goes status')
-
         for key, value in HASH_DICT.iteritems():
             cmds_list.append(key)
 
@@ -238,9 +152,9 @@ def main():
         module.exit_json(
             cmds=cmds_list
         )
-
     else:
-        verify_gobgp_convergence(module)
+
+        verify_link_status(module)
 
         # Calculate the entire test result
         HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
@@ -248,7 +162,7 @@ def main():
         # Create a log file
         log_file_path = module.params['log_dir_path']
         log_file_path += '/{}.log'.format(module.params['hash_name'])
-        log_file = open(log_file_path, 'a')
+        log_file = open(log_file_path, 'w')
         for key, value in HASH_DICT.iteritems():
             log_file.write(key)
             log_file.write('\n')
@@ -263,7 +177,6 @@ def main():
             hash_dict=HASH_DICT,
             log_file_path=log_file_path
         )
-
 if __name__ == '__main__':
     main()
 

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" Restart and Check GOES Status """
+""" Test hping """
 
 #
 # This file is part of Ansible
@@ -26,7 +26,7 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: restart_and_check_goes_status
+module: test_hping
 author: Platina Systems
 short_description: Module to restart goes and check the status.
 description:
@@ -34,15 +34,14 @@ description:
 options:
     switch_name:
       description:
-        - Name of the switch on which goes health will be checked.
+        - Name of the switch from which ping will be checked.
       required: False
       type: str
-    restart_count:
+    target_name:
       description:
-        - Coutn of how many times we need to restart goes.
+        - Name of the switch to which ping will be checked.
       required: False
-      type: int
-      default: 1
+      type: str
     hash_name:
       description:
         - Name of the hash in which to store the result in redis.
@@ -58,8 +57,8 @@ options:
 EXAMPLES = """
 - name: Restart goes 1500 times and check it's status
   restart_and_check_goes_status:
-    switch_name: "{{ inventory_hostname }}"
-    restart_count: 1500
+    switch_name1: "{{ inventory_hostname }}"
+    switch_name2: "{{ groups['spine'][0] }}"
     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
     log_dir_path: "{{ log_dir_path }}"
 """
@@ -122,53 +121,55 @@ def execute_commands(module, cmd):
     return out
 
 
+def verify_ping(module):
+	global RESULT_STATUS, failure_summary
+	failure_summary = ''
+        switch_name = module.params['switch_name']
+	switch_name1 = module.params['switch_name1']
+	switch_name2 = module.params['switch_name2']
+	spine_list = module.params['spine_list']
+
+	if switch_name in spine_list:
+		ip1 = "10.0.5.{}".format(switch_name1[-2::])
+		ip2 = "10.0.5.{}".format(switch_name2[-2::])
+	else:
+		ip2 = "10.0.5.{}".format(switch_name1[-2::])
+		ip1 = "10.0.5.{}".format(switch_name2[-2::])
+
+	cmd1 = "ping -c 5 -I {} {}".format(ip1, ip2)
+	cmd2 = "timeout 5 hping3 -c 5 --icmp --faster -t 1 {}".format(ip2)
+
+        out1 = execute_commands(module, cmd1)
+	if "100% packet loss" in out1:
+		RESULT_STATUS = False
+		failure_summary += "ping from {} to ".format(ip1)
+		failure_summary += "{} is not working.\n".format(ip2)
+
+	out2 = execute_commands(module, cmd2)
+        #time.sleep(5)
+	if len(out2.splitlines()) < 10:
+		RESULT_STATUS = False
+		failure_summary += "hping from {} to ".format(switch_name[-2::])
+		failure_summary += "{} is not working.\n".format(ip2)
+
+	HASH_DICT['result.detail'] = failure_summary
+
+
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            switch_name=dict(required=False, type='str'),
-            restart_count=dict(required=False, type='int', default=1),
+ 	    switch_name=dict(required=False, type='str'),
+            switch_name1=dict(required=False, type='str'),
+	    switch_name2=dict(required=False, type='str'),
+	    spine_list=dict(required=False, type='list'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
-            is_restart=dict(required=False, type='bool', default=True),
-            is_network_status=dict(required=False, type='bool', default=False),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
-    failure_summary = ''
-
-    # Restart goes for given number of times and check it's status
-    for i in range(0, module.params['restart_count']):
-        if module.params['is_restart']:
-            execute_commands(module, 'goes restart')
-        time.sleep(10)
-        goes_status = execute_commands(module, 'goes status')
-        goes_status = goes_status.lower()
-        if ('not ok' in goes_status or 'check daemons' not in goes_status or
-                'check redis' not in goes_status or
-                'check vnet' not in goes_status):
-            if module.params['is_restart']:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(module.params['switch_name'])
-                failure_summary += 'goes status is not ok after '
-                failure_summary += 'restarting it for {} times\n'.format(i)
-            else:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(module.params['switch_name'])
-                failure_summary += 'goes status is not ok.\n'
-
-    if module.params['is_network_status']:
-        network_status = execute_commands(module, '/etc/init.d/networking status')
-        if 'active' not in network_status:
-            RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(module.params['switch_name'])
-            failure_summary += 'network status is not active.\n'
-
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
-    HASH_DICT['result.detail'] = failure_summary
-
+    verify_ping(module)
     # Create a log file
     log_file_path = module.params['log_dir_path']
     log_file_path += '/{}.log'.format(module.params['hash_name'])

@@ -26,7 +26,7 @@
         start_time: "{{ start_time.stdout }}"
 
 
-- hosts: leaf[0]
+- hosts: leaf[0]:spine[0]
   become: true
   tasks:
     - file:
@@ -63,7 +63,7 @@
       command: "service snmpd status"
 
 
-- hosts: leaf[0]
+- hosts: leaf[0]:spine[0]
   become: true
   tasks:
 
@@ -92,17 +92,19 @@
       command: "/etc/init.d/snmptrapd status"
 
 
-- hosts: spine[0]
-  become: true
-  tasks:
-    - name: From spine, generate smnptraps using given OIDs.
-      command: "snmptrap -v 2c  -c public 172.17.2.{{ groups['leaf'][0][-2::] }} 456 {{ item }}"
-      loop:
-        - 1.3.6.1.6.3.1.1.5.3
-        - 1.3.6.1.6.3.1.1.5.4
-        - 1.3.6.1.6.3.1.1.5.1
-      loop_control:
-        pause: 2
+#- hosts: spine[0]
+#  become: true
+#  tasks:
+#
+#    - name: From spine, generate smnptraps using given OIDs.
+#      command: "snmptrap -v 2c  -c public 172.17.2.{{ groups['leaf'][0][-2::] }} 456 {{ item }}"
+#      loop:
+#        - 1.3.6.1.6.3.1.1.5.3
+#        - 1.3.6.1.6.3.1.1.5.4
+#        - 1.3.6.1.6.3.1.1.5.1
+#      loop_control:
+#        pause: 2
+    # snmpd 43 restart
 
 
 - hosts: leaf[0]

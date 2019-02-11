@@ -77,7 +77,6 @@ hash_dict:
 RESULT_STATUS = True
 HASH_DICT = OrderedDict()
 
-
 def run_cli(module, cli):
     """
     Method to execute the cli command on the target node(s) and
@@ -112,11 +111,7 @@ def execute_commands(module, cmd):
     # command output as value in the hash dictionary
     exec_time = run_cli(module, 'date +%Y%m%d%T')
     key = '{0} {1} {2}'.format(module.params['switch_name'], exec_time, cmd)
-
-    if out:
-        HASH_DICT[key] = out[:512] if len(out.encode('utf-8')) > 512 else out
-    else:
-        HASH_DICT[key] = out
+    HASH_DICT[key] = out
 
     return out
 
@@ -161,6 +156,7 @@ def verify_fib_entries(module):
         failure_summary += 'assigning same IP to 2 different containers.\n'
         failure_summary += 'FIB Output- {}\n'.format(fib_out)
 
+    time.sleep(15)
     for i in range(len(container_name)):
         # Bring down the interface from the docker container
         cmd = '{} down {} xeth{}'.format(d_move, container_name[i], eth[i])

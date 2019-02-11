@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" Restart and Check GOES Status """
+""" Test issue137 """
 
 #
 # This file is part of Ansible
@@ -26,7 +26,7 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: restart_and_check_goes_status
+module: test_hping
 author: Platina Systems
 short_description: Module to restart goes and check the status.
 description:
@@ -34,15 +34,14 @@ description:
 options:
     switch_name:
       description:
-        - Name of the switch on which goes health will be checked.
+        - Name of the switch from which ping will be checked.
       required: False
       type: str
-    restart_count:
+    target_name:
       description:
-        - Coutn of how many times we need to restart goes.
+        - Name of the switch to which ping will be checked.
       required: False
-      type: int
-      default: 1
+      type: str
     hash_name:
       description:
         - Name of the hash in which to store the result in redis.
@@ -58,8 +57,8 @@ options:
 EXAMPLES = """
 - name: Restart goes 1500 times and check it's status
   restart_and_check_goes_status:
-    switch_name: "{{ inventory_hostname }}"
-    restart_count: 1500
+    switch_name1: "{{ inventory_hostname }}"
+    switch_name2: "{{ groups['spine'][0] }}"
     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
     log_dir_path: "{{ log_dir_path }}"
 """
@@ -121,53 +120,99 @@ def execute_commands(module, cmd):
 
     return out
 
+def test_port_parameters(module):
+	global RESULT_STATUS, failure_summary
+	switch_name = module.params['switch_name']
+	spine_list = module.params['spine_list']
+	autoneg = module.params['autoneg']
+	if spine_list and autoneg:
+		aparams = True
+	else:
+		aparams = False
+
+	failure_summary = ''
+	eth = module.params['port']
+	platina_redis_channel = 'platina - mk1'
+	cmd = 'goes hget {} vnet.xeth{}.speed'.format(platina_redis_channel, eth)
+	out = run_cli(module, cmd)
+	if aparams:
+		if switch_name in spine_list:
+			speed = 'autoneg'
+			stage = "after change of config"
+		else:
+			speed = '100g'
+			stage = ''
+	else:
+		speed = '100g'
+		stage = ''
+	if speed not in out:
+		RESULT_STATUS = False
+		failure_summary += 'On switch {} '.format(switch_name)
+		failure_summary += 'speed of the interface '
+		failure_summary += 'is not set to {} for '.format('100g')
+		failure_summary += 'the interface xeth{} {}\n'.format(eth,stage)
+
+	# Verify fec of interfaces are set to correct value
+	cmd = 'goes hget {} vnet.xeth{}.fec'.format(platina_redis_channel, eth)
+	out = run_cli(module, cmd)
+	if 'cl91' not in out:
+		RESULT_STATUS = False
+		failure_summary += 'On switch {} '.format(switch_name)
+		failure_summary += 'fec is not set to {} for '.format('cl91')
+		failure_summary += 'the interface xeth{} {}\n'.format(eth, stage)
+
+	# Verify if port links are up
+	cmd = 'goes hget {} vnet.xeth{}.link'.format(platina_redis_channel, eth)
+	out = run_cli(module, cmd)
+	if 'true' not in out:
+		RESULT_STATUS = False
+		failure_summary += 'On switch {} '.format(switch_name)
+		failure_summary += 'port link is not up '
+		failure_summary += 'for the interface xeth{} {}\n'.format(eth, stage)
+
+	cmd = 'goes hget {} vnet.xeth{}.media'.format(platina_redis_channel, eth)
+	out = run_cli(module, cmd)
+	if 'copper' not in out:
+		RESULT_STATUS = False
+		failure_summary += 'On switch {} '.format(switch_name)
+		failure_summary += 'interface media is not set to copper '
+		failure_summary += 'for the interface xeth{} {}\n'.format(eth, stage)
+
+	cmd = "ethtool xeth{}".format(eth)
+	out = execute_commands(module, cmd)
+	if aparams:
+		if switch_name in spine_list:
+			autoneg1 = "Auto-negotiation: on"
+		else:
+			autoneg1 = 'Auto-negotiation: off'
+	else:
+		autoneg1 = 'Auto-negotiation: off'
+	if autoneg1 not in out:
+		RESULT_STATUS = False
+		failure_summary += "Autoneg for xeth {} ".format(eth)
+		failure_summary += "is not set to off {}.\n".format(stage)
+
+	HASH_DICT['result.detail'] = failure_summary
 
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
-            restart_count=dict(required=False, type='int', default=1),
+			port=dict(required=False, type='int'),
+	        spine_list=dict(required=False, type='list'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
-            is_restart=dict(required=False, type='bool', default=True),
-            is_network_status=dict(required=False, type='bool', default=False),
+	        autoneg=dict(required=False, type='str', default=''),
         )
     )
 
-    global HASH_DICT, RESULT_STATUS
-    failure_summary = ''
+    global RESULT_STATUS, HASH_DICT
 
-    # Restart goes for given number of times and check it's status
-    for i in range(0, module.params['restart_count']):
-        if module.params['is_restart']:
-            execute_commands(module, 'goes restart')
-        time.sleep(10)
-        goes_status = execute_commands(module, 'goes status')
-        goes_status = goes_status.lower()
-        if ('not ok' in goes_status or 'check daemons' not in goes_status or
-                'check redis' not in goes_status or
-                'check vnet' not in goes_status):
-            if module.params['is_restart']:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(module.params['switch_name'])
-                failure_summary += 'goes status is not ok after '
-                failure_summary += 'restarting it for {} times\n'.format(i)
-            else:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(module.params['switch_name'])
-                failure_summary += 'goes status is not ok.\n'
-
-    if module.params['is_network_status']:
-        network_status = execute_commands(module, '/etc/init.d/networking status')
-        if 'active' not in network_status:
-            RESULT_STATUS = False
-            failure_summary += 'On switch {} '.format(module.params['switch_name'])
-            failure_summary += 'network status is not active.\n'
+    test_port_parameters(module)
 
     # Calculate the entire test result
     HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
-    HASH_DICT['result.detail'] = failure_summary
 
     # Create a log file
     log_file_path = module.params['log_dir_path']
@@ -185,10 +230,8 @@ def main():
     # Exit the module and return the required JSON.
     module.exit_json(
         hash_dict=HASH_DICT,
-        log_file_path=log_file_path,
-        changed=False
+        log_file_path=log_file_path
     )
 
 if __name__ == '__main__':
     main()
-

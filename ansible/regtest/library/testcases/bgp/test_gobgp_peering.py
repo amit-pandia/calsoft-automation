@@ -131,7 +131,7 @@ def execute_commands(module, cmd):
     """
     global HASH_DICT
 
-    if 'service' in cmd and 'restart' in cmd:
+    if 'service' in cmd and 'restart' in cmd or module.params['dry_run_mode']:
         out = None
     else:
         out = run_cli(module, cmd)
@@ -224,6 +224,8 @@ def verify_gobgp_peering(module):
     if_down = module.params['if_down']
     eth_list = module.params['eth_list']
     leaf_list = module.params['leaf_list']
+    delay = module.params['delay']
+    retries = module.params['retries']
 
     if eth_list:
         eth_list = eth_list.split(',')
@@ -234,16 +236,27 @@ def verify_gobgp_peering(module):
     # Restart and check package status
     execute_commands(module, 'service {} restart'.format(package_name))
     execute_commands(module, 'service {} status'.format(package_name))
-
+    retry = retries
     # Advertise the routes
-    if check_ping or if_down:
-        add_route_cmd = 'gobgp global rib -a ipv4 add 192.168.{}.1/32'.format(
-            switch_name[-2::])
-        execute_commands(module, add_route_cmd)
-        time.sleep(2)
+    while(retry):
+        failure_summary1 = ''
+        RESULT_STATUS = True
+        if check_ping or if_down:
+            add_route_cmd = 'gobgp global rib -a ipv4 add 192.168.{}.1/32'.format(
+                switch_name[-2::])
+            execute_commands(module, add_route_cmd)
+            time.sleep(delay)
 
-    # Verify bgp neighbor relationship
-    failure_summary += verify_neighbor_relationship(module)
+        # Verify bgp neighbor relationship
+        failure_summary1 += verify_neighbor_relationship(module)
+
+        if not RESULT_STATUS:
+            retry -= 1
+            time.sleep(delay)
+        else:
+            break
+
+    RESULT_STATUS1 = RESULT_STATUS
 
     if if_down:
         if switch_name in leaf_list:
@@ -251,27 +264,50 @@ def verify_gobgp_peering(module):
             for eth in eth_list:
                 down_cmd = 'ifconfig xeth{} down'.format(eth)
                 execute_commands(module, down_cmd)
+    time.sleep(delay)
 
-        # Wait for 5 secs
-        time.sleep(5)
-
-        # Verify bgp neighbor relationship
-        failure_summary += verify_neighbor_relationship(module)
-
-        if switch_name in leaf_list:
-            # Bring up the interfaces
-            for eth in eth_list:
-                down_cmd = 'ifconfig xeth{} up'.format(eth)
-                execute_commands(module, down_cmd)
-
-        # Wait for 5 secs
-        time.sleep(5)
+    retry = retries
+    while (retry):
+        failure_summary2 = ''
+        RESULT_STATUS = True
 
         # Verify bgp neighbor relationship
-        failure_summary += verify_neighbor_relationship(module)
+        failure_summary2 += verify_neighbor_relationship(module)
+
+        if not RESULT_STATUS:
+            retry -= 1
+            time.sleep(delay)
+        else:
+            break
+
+    RESULT_STATUS2 = RESULT_STATUS
+
+    if switch_name in leaf_list:
+        # Bring up the interfaces
+        for eth in eth_list:
+            down_cmd = 'ifconfig xeth{} up'.format(eth)
+            execute_commands(module, down_cmd)
+
+    # Wait for 5 secs
+    time.sleep(delay)
+
+    retry = retries
+    while (retry):
+        failure_summary3 = ''
+        RESULT_STATUS = True
+
+        # Verify bgp neighbor relationship
+        failure_summary3 += verify_neighbor_relationship(module)
+
+        if not RESULT_STATUS:
+            retries -= 1
+            time.sleep(delay)
+        else:
+            break
 
     # Store the failure summary in hash
-    HASH_DICT['result.detail'] = failure_summary
+    HASH_DICT['result.detail'] = failure_summary1 + failure_summary2 + failure_summary3
+    RESULT_STATUS = all([RESULT_STATUS, RESULT_STATUS1, RESULT_STATUS2])
 
     # Get the GOES status info
     execute_commands(module, 'goes status')
@@ -290,35 +326,89 @@ def main():
             leaf_list=dict(required=False, type='list', default=[]),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
+    if module.params['dry_run_mode']:
+        switch_name = module.params['switch_name']
+        package_name = module.params['package_name']
+        check_ping = module.params['check_ping']
+        if_down = module.params['if_down']
+        eth_list = module.params['eth_list']
+        leaf_list = module.params['leaf_list']
 
-    verify_gobgp_peering(module)
+        if eth_list:
+            eth_list = eth_list.split(',')
+        # Get the gobgp config
+        execute_commands(module, 'cat /etc/gobgp/gobgpd.conf')
 
-    # Calculate the entire test result
-    HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+        # Restart and check package status
+        execute_commands(module, 'service {} restart'.format(package_name))
+        execute_commands(module, 'service {} status'.format(package_name))
+        if check_ping or if_down:
+            add_route_cmd = 'gobgp global rib -a ipv4 add 192.168.{}.1/32'.format(
+                switch_name[-2::])
+            execute_commands(module, add_route_cmd)
 
-    # Create a log file
-    log_file_path = module.params['log_dir_path']
-    log_file_path += '/{}.log'.format(module.params['hash_name'])
-    log_file = open(log_file_path, 'a')
-    for key, value in HASH_DICT.iteritems():
-        log_file.write(key)
-        log_file.write('\n')
-        log_file.write(str(value))
-        log_file.write('\n')
-        log_file.write('\n')
+        if if_down:
+            if switch_name in leaf_list:
+                # Bring down the interfaces
+                for eth in eth_list:
+                    down_cmd = 'ifconfig xeth{} down'.format(eth)
+                    execute_commands(module, down_cmd)
 
-    log_file.close()
+            cmd = 'gobgp nei'
+            execute_commands(module, cmd)
 
-    # Exit the module and return the required JSON.
-    module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+            if switch_name in leaf_list:
+                # Bring up the interfaces
+                for eth in eth_list:
+                    down_cmd = 'ifconfig xeth{} up'.format(eth)
+                    execute_commands(module, down_cmd)
+
+            cmd = 'gobgp nei'
+            execute_commands(module, cmd)
+
+        execute_commands(module, 'goes status')
+
+        for key, value in HASH_DICT.iteritems():
+            cmds_list.append(key)
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            cmds=cmds_list
+        )
+
+    else:
+        verify_gobgp_peering(module)
+
+        # Calculate the entire test result
+        HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
+
+        # Create a log file
+        log_file_path = module.params['log_dir_path']
+        log_file_path += '/{}.log'.format(module.params['hash_name'])
+        log_file = open(log_file_path, 'a')
+        for key, value in HASH_DICT.iteritems():
+            log_file.write(key)
+            log_file.write('\n')
+            log_file.write(str(value))
+            log_file.write('\n')
+            log_file.write('\n')
+
+        log_file.close()
+
+        # Exit the module and return the required JSON.
+        module.exit_json(
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
 
 if __name__ == '__main__':
     main()
+
 
