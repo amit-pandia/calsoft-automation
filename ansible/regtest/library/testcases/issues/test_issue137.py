@@ -138,16 +138,19 @@ def test_port_parameters(module):
 	if aparams:
 		if switch_name in spine_list:
 			speed = 'autoneg'
+			stage = "after change of config"
 		else:
 			speed = '100g'
+			stage = ''
 	else:
 		speed = '100g'
+		stage = ''
 	if speed not in out:
 		RESULT_STATUS = False
 		failure_summary += 'On switch {} '.format(switch_name)
 		failure_summary += 'speed of the interface '
 		failure_summary += 'is not set to {} for '.format('100g')
-		failure_summary += 'the interface xeth{}\n'.format(eth)
+		failure_summary += 'the interface xeth{} {}\n'.format(eth,stage)
 
 	# Verify fec of interfaces are set to correct value
 	cmd = 'goes hget {} vnet.xeth{}.fec'.format(platina_redis_channel, eth)
@@ -156,7 +159,7 @@ def test_port_parameters(module):
 		RESULT_STATUS = False
 		failure_summary += 'On switch {} '.format(switch_name)
 		failure_summary += 'fec is not set to {} for '.format('cl91')
-		failure_summary += 'the interface xeth{}\n'.format(eth)
+		failure_summary += 'the interface xeth{} {}\n'.format(eth, stage)
 
 	# Verify if port links are up
 	cmd = 'goes hget {} vnet.xeth{}.link'.format(platina_redis_channel, eth)
@@ -165,7 +168,7 @@ def test_port_parameters(module):
 		RESULT_STATUS = False
 		failure_summary += 'On switch {} '.format(switch_name)
 		failure_summary += 'port link is not up '
-		failure_summary += 'for the interface xeth{}\n'.format(eth)
+		failure_summary += 'for the interface xeth{} {}\n'.format(eth, stage)
 
 	cmd = 'goes hget {} vnet.xeth{}.media'.format(platina_redis_channel, eth)
 	out = run_cli(module, cmd)
@@ -173,21 +176,21 @@ def test_port_parameters(module):
 		RESULT_STATUS = False
 		failure_summary += 'On switch {} '.format(switch_name)
 		failure_summary += 'interface media is not set to copper '
-		failure_summary += 'for the interface xeth{}\n'.format(eth)
+		failure_summary += 'for the interface xeth{} {}\n'.format(eth, stage)
 
-	cmd = "ethtool xeth{} |grep Auto-negotiation".format(eth)
+	cmd = "ethtool xeth{}".format(eth)
 	out = execute_commands(module, cmd)
 	if aparams:
 		if switch_name in spine_list:
-			autoneg1 = autoneg
+			autoneg1 = "Auto-negotiation: on"
 		else:
-			autoneg1 = 'off'
+			autoneg1 = 'Auto-negotiation: off'
 	else:
-		autoneg1 = 'off'
+		autoneg1 = 'Auto-negotiation: off'
 	if autoneg1 not in out:
 		RESULT_STATUS = False
 		failure_summary += "Autoneg for xeth {} ".format(eth)
-		failure_summary += "is not set to off.\n"
+		failure_summary += "is not set to off {}.\n".format(stage)
 
 	HASH_DICT['result.detail'] = failure_summary
 

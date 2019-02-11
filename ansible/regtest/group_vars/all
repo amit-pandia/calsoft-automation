@@ -22,6 +22,7 @@ vlan_log_dir: /var/log/regression/vlan
 upgrade_log_dir: /var/log/regression/upgrade
 boot_log_dir: /var/log/regression/boot
 docker_log_dir: /var/log/regression/docker
+link_flap_log_dir: /var/log/regression/link_flap
 issues_log_dir: /var/log/regression/issues
 snmp_log_dir: /var/log/regression/snmp
 snmptrapd_log_dir: /var/log/regression/snmptrapd
