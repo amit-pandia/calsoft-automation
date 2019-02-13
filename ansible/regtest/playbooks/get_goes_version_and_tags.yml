@@ -4,7 +4,7 @@
   register: version_out
 
 - name: Get goes vnetd details
-  shell: "goes vnetd -version"
+  shell: "/usr/lib/goes/vnet-platina-mk1 version"
   register: tag_out
 
 - name: Store goes version and tag details in redis db
