@@ -114,16 +114,39 @@ def verify_link_status(module):
 	global RESULT_STATUS, HASH_DICT
 	failure_summary = ''
 	aname = module.params['switch_name']
-    speed = module.params['speed']
-    f_ports = module.params['f_ports']
+	stage = module.params['stage']
+        speed = module.params['speed']
+        f_ports = module.params['f_ports']
 	eth_list = [1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31]
-    for ele in f_ports:
-        eth_list.remove(ele)
-	for eth in eth_list:
-	        out = execute_commands(module, "goes hget platina-mk1 link |grep vnet.xeth{}.link".format(eth))
-		if "true" not in out:
-			RESULT_STATUS = False
-			failure_summary += "xeth{} link status is not true after ink flapping on invader{}.\n".format(eth, aname)
+        for ele in f_ports:
+	    try:
+        	eth_list.remove(ele)
+	    except Exception as e:
+		pass
+	if speed or f_ports:
+		for eth in eth_list:
+		    for subp in module.params['sub']:
+			if speed:
+				out = execute_commands(module, "goes hget platina-mk1 vnet.xeth{}-{}.speed".format(eth, subp))
+	                        out = out.splitlines()
+        	                for line in out:
+                	                if speed not in line:
+                        	                RESULT_STATUS = False
+                                	        failure_summary += "link speed is not {} {} link flapping on invader{} for {}.\n".format(speed, stage, aname, line)
+
+                	out = execute_commands(module, "goes hget platina-mk1 vnet.xeth{}-{}.link".format(eth, subp))
+			out = out.splitlines()
+			for line in out:
+	                	if "true" not in line:
+        	                	RESULT_STATUS = False
+                	        	failure_summary += "link status is not true {} link flapping on invader{} for {}.\n".format(stage, aname, line)
+
+	else:			
+		for eth in eth_list:
+	        	out = execute_commands(module, "goes hget platina-mk1 link |grep vnet.xeth{}.link".format(eth))
+			if "true" not in out:
+				RESULT_STATUS = False
+				failure_summary += "xeth{} link status is not true {} link flapping on invader{}.\n".format(eth, stage, aname)
 
 
 	execute_commands(module, 'goes status')
@@ -138,6 +161,8 @@ def main():
             switch_name=dict(required=False, type='str'),
 	    delay=dict(required=False, type='int', default=10),
             retries=dict(required=False, type='int', default=6),
+	    sub=dict(required=False, type='list'),
+	    stage=dict(required=False, type='str'),
             speed=dict(required=False, type='str'),
             dry_run_mode=dict(required=False, type='bool', default=False),
             hash_name=dict(required=False, type='str'),
@@ -169,7 +194,7 @@ def main():
         # Create a log file
         log_file_path = module.params['log_dir_path']
         log_file_path += '/{}.log'.format(module.params['hash_name'])
-        log_file = open(log_file_path, 'w')
+        log_file = open(log_file_path, 'a')
         for key, value in HASH_DICT.iteritems():
             log_file.write(key)
             log_file.write('\n')
