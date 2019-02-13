@@ -4,6 +4,9 @@ reset_config: True
 platina_redis_channel: platina-mk1
 iface_type: platina-mk1
 
+goes_build_id: N/A(probably the current build doesn't support)
+goes_vnetd_id: N/A(probably the current build doesn't support)
+
 package_delay: 10
 package_retry: 6
 
