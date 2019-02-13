@@ -13,13 +13,29 @@
       debug:
         var: goes_version.stdout_lines
 
+    - name: Get GoES Build ID
+      shell: "goes show buildid"
+      register: goes_build_id
+
+    - name: Print GoES Build ID
+      debug:
+        var: goes_build_id.stdout_lines
+
     - name: Get GoES tag details
-      shell: "goes vnetd -version"
+      shell: "/usr/lib/goes/vnet-platina-mk1 version"
       register: goes_tags
 
     - name: Print GoES tag details
       debug:
         var: goes_tags.stdout_lines
+
+    - name: Get GoES vnetd Build ID
+      shell: "goes buildid /usr/lib/goes/vnet-platina-mk1"
+      register: goes_vnetd_id
+
+    - name: Print GoES vnetd Build ID
+      debug:
+        var: goes_vnetd_id.stdout_lines
 
     - name: Get kernel version info
       shell: dpkg --list | grep kernel
@@ -31,7 +47,9 @@
 
     - set_fact:
         goes_version: "{{ goes_version.stdout }}"
+        goes_build_id: "{{ goes_build_id.stdout }}"
         goes_tags: "{{ goes_tags.stdout }}"
+        goes_vnetd_id: "{{ goes_vnetd_id.stdout }}"
         kernel_version: "{{ kernel_version.stdout }}"
 
 
@@ -52,7 +70,9 @@
         testbed_name: "{{ testbed_name }}"
         playbook_dir: "{{ playbook_dir }}"
         goes_version: "<br><b>{{ groups['leaf'][0] }}:</b> {{ hostvars[groups['leaf'][0]].goes_version }}, <br><b>{{ groups['leaf'][1] }}:</b> {{ hostvars[groups['leaf'][1]].goes_version }}, <br><b>{{ groups['spine'][0] }}:</b> {{ hostvars[groups['spine'][0]].goes_version }}, <br><b>{{ groups['spine'][1] }}:</b> {{ hostvars[groups['spine'][1]].goes_version }}"
+        goes_build_id: "<br><b>{{ groups['leaf'][0] }}:</b> {{ hostvars[groups['leaf'][0]].goes_build_id }}, <br><b>{{ groups['leaf'][1] }}:</b> {{ hostvars[groups['leaf'][1]].goes_build_id }}, <br><b>{{ groups['spine'][0] }}:</b> {{ hostvars[groups['spine'][0]].goes_build_id }}, <br><b>{{ groups['spine'][1] }}:</b> {{ hostvars[groups['spine'][1]].goes_build_id }}"
         goes_tags: "<br><b>{{ groups['leaf'][0] }}:</b> {{ hostvars[groups['leaf'][0]].goes_tags }}, <br><b>{{ groups['leaf'][1] }}:</b> {{ hostvars[groups['leaf'][1]].goes_tags }}, <br><b>{{ groups['spine'][0] }}:</b> {{ hostvars[groups['spine'][0]].goes_tags }}, <br><b>{{ groups['spine'][1] }}:</b> {{ hostvars[groups['spine'][1]].goes_tags }}"
+        goes_vnetd_id: "<br><b>{{ groups['leaf'][0] }}:</b> {{ hostvars[groups['leaf'][0]].goes_vnetd_id }}, <br><b>{{ groups['leaf'][1] }}:</b> {{ hostvars[groups['leaf'][1]].goes_vnetd_id }}, <br><b>{{ groups['spine'][0] }}:</b> {{ hostvars[groups['spine'][0]].goes_vnetd_id }}, <br><b>{{ groups['spine'][1] }}:</b> {{ hostvars[groups['spine'][1]].goes_vnetd_id }}"
         kernel_version: "<br><b>{{ groups['leaf'][0] }}:</b> {{ hostvars[groups['leaf'][0]].kernel_version }}, <br><b>{{ groups['leaf'][1] }}:</b> {{ hostvars[groups['leaf'][1]].kernel_version }}, <br><b>{{ groups['spine'][0] }}:</b> {{ hostvars[groups['spine'][0]].kernel_version }}, <br><b>{{ groups['spine'][1] }}:</b> {{ hostvars[groups['spine'][1]].kernel_version }}"
       register: out
 
@@ -68,7 +88,9 @@
         subject: "{{ out.subject }}"
         invader_list: "{{ groups['leaf'][0] }}, {{ groups['leaf'][1] }}, {{ groups['spine'][0] }}, {{ groups['spine'][1] }}, "
         goes_version: "{{ out.goes_version }}"
+        goes_build_id: "{{ out.goes_build_id }}"
         goes_tags: "{{ out.goes_tags }}"
+        goes_vnetd_id: "{{ out.goes_vnetd_id }}"
         kernel_version: "{{ out.kernel_version }}"
         host_file: "{{ host_file }}"
 

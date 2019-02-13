@@ -72,10 +72,14 @@ def main():
     testbed_name = module.params['testbed_name']
     playbook_dir = module.params['playbook_dir']
     g_version = module.params['goes_version'].split('\n')
+    g_build = module.params['goes_build_id'].split('\n')
     g_tags = module.params['goes_tags'].split('\n')
+    v_build = module.params['goes_vnetd_id'].split('\n')
     k_version = module.params['kernel_version'].split('\n')
     goes_version = "\\n".join(g_version)
+    goes_build_id = "\\n".join(g_build)
     goes_tags = "\\n".join(g_tags)
+    goes_vnetd_id = "\\n".join(v_build)
     kernel_version = "\\n".join(k_version)
 
     regression_summary_file = '/var/log/regression/regression_summary_file_{}'.format(testbed_name)
@@ -137,7 +141,9 @@ def main():
         skipped_count=skipped_count,
         skipped_list=skipped_testcase_list,
         goes_version=goes_version,
+        goes_build_id=goes_build_id,
         goes_tags=goes_tags,
+        goes_vnetd_id=goes_vnetd_id,
         kernel_version=kernel_version,
         subject=subject
     )
