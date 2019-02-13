@@ -36,10 +36,41 @@
         dest: "{{ network_interfaces_file }}"
       when: not dry_run
 
+    - name: Copy goesd-platina-mk1-modprobe.conf file
+      template:
+        src: "../../files/goesd-platina-mk1-modprobe.conf_lane1_count4"
+        dest: "{{ goesd_modprobe_file }}"
+      when: not dry_run
+
     - name: Update interfaces file for fiber ports
       test_fiber_ports:
         cmd: "4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1"
       register: fmodule_out
+    
+    - name: Restart goes
+      command: "{{ item }}"
+      with_items:
+        - 'rmmod platina-mk1'
+        - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
+        - 'ifdown -a --allow vnet'
+        - 'ifup -a --allow vnet'
+        - 'goes restart'
+      when: not dry_run
+
+    - set_fact:
+        commands: "{{ item }}"
+      with_items:
+        - 'rmmod platina-mk1'
+        - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
+        - 'ifdown -a --allow vnet'
+        - 'ifup -a --allow vnet'
+        - 'goes restart'
+      when: dry_run
+
+    - name: Wait few seconds for GOES to come up
+      pause:
+        seconds: 10
+      when: not dry_run
 
     - name: Add flapping script to invaders
       copy:

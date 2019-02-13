@@ -44,7 +44,7 @@
         retries: "{{ package_retry }}"
         delay: "{{ package_delay }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        log_dir_path: "{{ bgp_log_dir }}"
+        log_dir_path: "{{ link_flap_log_dir }}"
       register: module_out
       when: not dry_run
 
@@ -58,7 +58,7 @@
         retries: "{{ package_retry }}"
         delay: "{{ package_delay }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        log_dir_path: "{{ bgp_log_dir }}"
+        log_dir_path: "{{ link_flap_log_dir }}"
       register: module_out
       when: not dry_run
 
@@ -67,7 +67,7 @@
         is_restart: False
         switch_name: "{{ inventory_hostname }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        log_dir_path: "{{ issues_log_dir }}"
+        log_dir_path: "{{ link_flap_log_dir }}"
       register: module_out
 
     - set_fact:

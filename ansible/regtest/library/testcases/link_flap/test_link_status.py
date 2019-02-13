@@ -123,7 +123,7 @@ def verify_link_status(module):
         	eth_list.remove(ele)
 	    except Exception as e:
 		pass
-	if speed or f_ports:
+	if module.params['sub']:
 		for eth in eth_list:
 		    for subp in module.params['sub']:
 			if speed:
@@ -143,7 +143,7 @@ def verify_link_status(module):
 
 	else:			
 		for eth in eth_list:
-	        	out = execute_commands(module, "goes hget platina-mk1 link |grep vnet.xeth{}.link".format(eth))
+	        	out = execute_commands(module, "goes hget platina-mk1 vnet.xeth{}.link".format(eth))
 			if "true" not in out:
 				RESULT_STATUS = False
 				failure_summary += "xeth{} link status is not true {} link flapping on invader{}.\n".format(eth, stage, aname)
@@ -162,11 +162,11 @@ def main():
 	    delay=dict(required=False, type='int', default=10),
             retries=dict(required=False, type='int', default=6),
 	    sub=dict(required=False, type='list'),
-	    stage=dict(required=False, type='str'),
+	    stage=dict(required=False, type='str', default=''),
             speed=dict(required=False, type='str'),
             dry_run_mode=dict(required=False, type='bool', default=False),
             hash_name=dict(required=False, type='str'),
-            f_ports=dict(required=False, type='list'),
+            f_ports=dict(required=False, type='list', default=[]),
             log_dir_path=dict(required=False, type='str'),
         )
     )
