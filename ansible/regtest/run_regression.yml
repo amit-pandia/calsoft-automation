@@ -63,6 +63,9 @@
 # Run all issues test cases
 - include: issues_main.yml
 
+# Run all link flap test cases
+- include: link_flap_main.yml
+
 
 - hosts: server_emulator
   become: true
