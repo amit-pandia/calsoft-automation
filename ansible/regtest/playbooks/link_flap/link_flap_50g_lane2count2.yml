@@ -19,9 +19,8 @@
       register: start_time
 
     - set_fact:
-        hash_name: "link_flap_100g_{{ start_time.stdout }}"
+        hash_name: "link_flap_50g_lane2count2_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
-
 
 - hosts: leaf:spine
   become: true
@@ -30,6 +29,46 @@
         path: "{{ link_flap_log_dir }}"
         state: directory
       when: not dry_run
+
+    - name: Copy port provisioned interfaces_50g_cr_fec_cl74_autoneg_off_lanes_2_count_2 file to /etc/network/interfaces
+      template:
+        src: "../../files/{{ inventory_hostname }}/interfaces_50g_cr_fec_cl74_autoneg_off_lanes_2_count_2"
+        dest: "{{ network_interfaces_file }}"
+      when: not dry_run
+
+    - name: Copy goesd-platina-mk1-modprobe.conf file
+      template:
+        src: "../../files/goesd-platina-mk1-modprobe.conf_lane2_count2"
+        dest: "{{ goesd_modprobe_file }}"
+      when: not dry_run
+
+    - name: Update interfaces file for fiber ports
+      test_fiber_ports:
+        cmd: "2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1"
+      register: fmodule_out
+
+    - name: Restart goes
+      command: "{{ item }}"
+      with_items:
+        - 'rmmod platina-mk1'
+        - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
+        - 'ifdown -a --allow vnet'
+        - 'ifup -a --allow vnet'
+        - 'goes restart'
+
+    - set_fact:
+        commands: "{{ item }}"
+      with_items:
+        - 'rmmod platina-mk1'
+        - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
+        - 'ifdown -a --allow vnet'
+        - 'ifup -a --allow vnet'
+        - 'goes restart'
+      when: dry_run
+
+    - name: Wait few seconds for GOES to come up
+      pause:
+        seconds: 10
 
     - name: Add flapping script to invaders
       copy:
@@ -43,13 +82,17 @@
         switch_name: "{{ inventory_hostname }}"
         retries: "{{ package_retry }}"
         delay: "{{ package_delay }}"
+        f_ports: "{{ fmodule_out.hash_dict['eth_list'] }}"
+        speed: "50g"
+        sub: [1, 2]
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        stage: "before"
         log_dir_path: "{{ link_flap_log_dir }}"
       register: module_out
       when: not dry_run
 
-    - name: Flap the links 500 times
-      shell: /tmp/./flap 1 500
+    - name: Flap the links 200 times
+      shell: /tmp/./flap 2 200
       when: not dry_run
 
     - name: Verify the link status
@@ -57,6 +100,9 @@
         switch_name: "{{ inventory_hostname }}"
         retries: "{{ package_retry }}"
         delay: "{{ package_delay }}"
+        stage: "after"
+        sub: [1, 2]
+        f_ports: "{{ fmodule_out.hash_dict['eth_list'] }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ link_flap_log_dir }}"
       register: module_out
@@ -71,7 +117,7 @@
       register: module_out
 
     - set_fact:
-        dry_run_cmds: "{{ dry_run_out.cmds }}"
+      dry_run_cmds: "{{ dry_run_out.cmds }}"
       when: dry_run
 
     - command: "date +%Y%m%d%T"
@@ -104,6 +150,12 @@
         state: absent
 
 
+- include: ../port_provision/port_provision_reset.yml
+  when:
+    - reset_config
+    - not dry_run
+
+
 - hosts: server_emulator
   become: true
   tasks:
@@ -127,5 +179,3 @@
         path: "{{ regression_summary_report }}"
         line: "{{ hash_name }}: {{ result.result_status }}"
       when: not dry_run
-
-

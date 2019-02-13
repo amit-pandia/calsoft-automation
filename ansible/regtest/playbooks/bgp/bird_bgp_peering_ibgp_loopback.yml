@@ -109,7 +109,7 @@
         hash_dict: "{{ module_out.hash_dict }}"
         log_content: "{{ logs['content'] | b64decode }}"
       delegate_to: 127.0.0.1
-      ignore_erros: yes
+      ignore_errors: yes
       when: not dry_run
 
     - include: ../../playbooks/get_goes_version_and_tags.yml
