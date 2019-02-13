@@ -114,12 +114,17 @@ def verify_link_status(module):
 	global RESULT_STATUS, HASH_DICT
 	failure_summary = ''
 	aname = module.params['switch_name']
-	eth_list = [3,5,7,9,11,13,15,17,19,21,23,25,27,29,31]
+    speed = module.params['speed']
+    f_ports = module.params['f_ports']
+	eth_list = [1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31]
+    for ele in f_ports:
+        eth_list.remove(ele)
 	for eth in eth_list:
 	        out = execute_commands(module, "goes hget platina-mk1 link |grep vnet.xeth{}.link".format(eth))
 		if "true" not in out:
 			RESULT_STATUS = False
 			failure_summary += "xeth{} link status is not true after ink flapping on invader{}.\n".format(eth, aname)
+
 
 	execute_commands(module, 'goes status')
 
@@ -133,8 +138,10 @@ def main():
             switch_name=dict(required=False, type='str'),
 	    delay=dict(required=False, type='int', default=10),
             retries=dict(required=False, type='int', default=6),
+            speed=dict(required=False, type='str'),
             dry_run_mode=dict(required=False, type='bool', default=False),
             hash_name=dict(required=False, type='str'),
+            f_ports=dict(required=False, type='list'),
             log_dir_path=dict(required=False, type='str'),
         )
     )
