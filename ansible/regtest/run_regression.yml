@@ -52,9 +52,9 @@
 - include: snmp_main.yml
 
 # Run goes boot playbooks
-#- include: playbooks/upgrade/goes_boot.yml
+- include: playbooks/upgrade/goes_boot.yml
 
-#- include: playbooks/upgrade/quagga_bgp_peering_ibgp_with_goes_boot.yml
+- include: playbooks/upgrade/quagga_bgp_peering_ibgp_with_goes_boot.yml
 
 
 # Run BMC upgrade playbook
