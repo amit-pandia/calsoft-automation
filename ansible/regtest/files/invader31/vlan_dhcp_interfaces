@@ -12,7 +12,7 @@ allow-hotplug eth0
 #iface eth0 inet dhcp
 auto eth0
 iface eth0 inet static
-  address 172.17.2.31
+  address 172.17.2.43
   netmask 255.255.254.0
   gateway 172.17.2.1
   dns-nameservers 8.8.8.8 8.8.4.4
