@@ -20,6 +20,8 @@
 
 import shlex
 
+import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -140,6 +142,8 @@ def verify_gobgp_administrative_distance(module):
     package_name = module.params['package_name']
     spine_list = module.params['spine_list']
     leaf_list = module.params['leaf_list']
+    delay = module.params['delay']
+    retries = module.params['retries']
     routes_to_check = []
 
     # Get the gobgp config
@@ -157,43 +161,52 @@ def verify_gobgp_administrative_distance(module):
     cmd = "vtysh -c 'sh ip route'"
     all_routes = execute_commands(module, cmd)
 
-    if all_routes:
-        switch_list = leaf_list if switch_name in spine_list else spine_list
-        for switch in switch_list:
-            routes_to_check.append('192.168.{}.1/32'.format(switch[-2::]))
+    while(retries):
+        RESULT_STATUS = True
+        failure_summary = ''
+        if all_routes:
+            switch_list = leaf_list if switch_name in spine_list else spine_list
+            for switch in switch_list:
+                routes_to_check.append('192.168.{}.1/32'.format(switch[-2::]))
 
-        routes_to_check.append('192.168.{}.1/32'.format(switch_name[-2::]))
+            routes_to_check.append('192.168.{}.1/32'.format(switch_name[-2::]))
 
-        for route in routes_to_check:
-            if route not in all_routes:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += 'bgp route for network {} '.format(route)
-                failure_summary += 'is not showing up '
-                failure_summary += 'in the output of {}\n'.format(cmd)
+            for route in routes_to_check:
+                if route not in all_routes:
+                    RESULT_STATUS = False
+                    failure_summary += 'On switch {} '.format(switch_name)
+                    failure_summary += 'bgp route for network {} '.format(route)
+                    failure_summary += 'is not showing up '
+                    failure_summary += 'in the output of {}\n'.format(cmd)
 
-        for route in all_routes.splitlines():
-            route = route.strip()
-            for network in routes_to_check:
-                if network in route:
-                    if '20/' or '200/' in route:
-                        pass
-                    else:
-                        RESULT_STATUS = False
-                        failure_summary += 'On switch {} '.format(switch_name)
-                        failure_summary += 'administrative value is not present '
-                        failure_summary += 'in the bgp route {}\n'.format(route)
+            for route in all_routes.splitlines():
+                route = route.strip()
+                for network in routes_to_check:
+                    if network in route:
+                        if '20/' or '200/' in route:
+                            pass
+                        else:
+                            RESULT_STATUS = False
+                            failure_summary += 'On switch {} '.format(switch_name)
+                            failure_summary += 'administrative value is not present '
+                            failure_summary += 'in the bgp route {}\n'.format(route)
 
-                    # if not route.startswith('B>*'):
-                    #     RESULT_STATUS = False
-                    #     failure_summary += 'On switch {} '.format(switch_name)
-                    #     failure_summary += 'bgp route {} '.format(route)
-                    #     failure_summary += 'does not start with B>*\n'
-    else:
-        RESULT_STATUS = False
-        failure_summary += 'On switch {} '.format(switch_name)
-        failure_summary += 'administrative distance cannot be verified since '
-        failure_summary += 'output of command {} is None'.format(cmd)
+                        # if not route.startswith('B>*'):
+                        #     RESULT_STATUS = False
+                        #     failure_summary += 'On switch {} '.format(switch_name)
+                        #     failure_summary += 'bgp route {} '.format(route)
+                        #     failure_summary += 'does not start with B>*\n'
+        else:
+            RESULT_STATUS = False
+            failure_summary += 'On switch {} '.format(switch_name)
+            failure_summary += 'administrative distance cannot be verified since '
+            failure_summary += 'output of command {} is None'.format(cmd)
+
+        if not RESULT_STATUS:
+            retries -= 1
+            time.sleep(delay)
+        else:
+            break
 
     # Store the failure summary in hash
     HASH_DICT['result.detail'] = failure_summary
@@ -210,6 +223,9 @@ def main():
             package_name=dict(required=False, type='str'),
             spine_list=dict(required=False, type='list', default=[]),
             leaf_list=dict(required=False, type='list', default=[]),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
         )

@@ -20,6 +20,8 @@
 
 import shlex
 
+import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -149,6 +151,8 @@ def verify_gobgp_local_preference(module):
     leaf = module.params['leaf']
     spine = module.params['spine']
     as_path = module.params['as_path']
+    delay = module.params['delay']
+    retries = module.params['retries']
     local_pref = '{LocalPref: 150}'
     neighbor_ip, cmd = '', ''
 
@@ -176,18 +180,27 @@ def verify_gobgp_local_preference(module):
 
     if switch_name == leaf or switch_name == spine:
         out = execute_commands(module, cmd)
-        if not as_path:
-            if local_pref not in out:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += '{} is not present '.format(local_pref)
-                failure_summary += 'in the output of command {}\n'.format(cmd)
-        else:
-            if '3 3 65243' not in out:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += 'as_path is not present '
-                failure_summary += 'in the output of command {}\n'.format(cmd)
+        while retries:
+            RESULT_STATUS = True
+            failure_summary = ''
+            if not as_path:
+                if local_pref not in out:
+                    RESULT_STATUS = False
+                    failure_summary += 'On switch {} '.format(switch_name)
+                    failure_summary += '{} is not present '.format(local_pref)
+                    failure_summary += 'in the output of command {}\n'.format(cmd)
+            else:
+                if '3 3 65243' not in out:
+                    RESULT_STATUS = False
+                    failure_summary += 'On switch {} '.format(switch_name)
+                    failure_summary += 'as_path is not present '
+                    failure_summary += 'in the output of command {}\n'.format(cmd)
+
+            if not RESULT_STATUS:
+                retries -= 1
+                time.sleep(delay)
+            else:
+                break
 
     # Store the failure summary in hash
     HASH_DICT['result.detail'] = failure_summary
@@ -204,6 +217,9 @@ def main():
             config_file=dict(required=False, type='str'),
             package_name=dict(required=False, type='str'),
             leaf=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             spine=dict(required=False, type='str'),
             as_path=dict(required=False, type='bool', default=False),
             hash_name=dict(required=False, type='str'),

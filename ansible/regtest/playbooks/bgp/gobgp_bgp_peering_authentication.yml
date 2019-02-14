@@ -36,10 +36,6 @@
         name: gobgpd
         state: restarted
 
-    - name: Wait few seconds for bgp convergence
-      pause:
-        seconds: 35
-
     - file:
         path: "{{ bgp_log_dir }}"
         state: directory
