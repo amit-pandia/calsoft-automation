@@ -22,6 +22,7 @@ import shlex
 
 from collections import OrderedDict
 #from mrtparse import *
+import time
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -112,10 +113,7 @@ def execute_commands(module, cmd):
     exec_time = run_cli(module, 'date +%Y%m%d%T')
     key = '{0} {1} {2}'.format(module.params['switch_name'], exec_time, cmd)
 
-    if out:
-        HASH_DICT[key] = out[:512] if len(out.encode('utf-8')) > 512 else out
-    else:
-        HASH_DICT[key] = out
+    HASH_DICT[key] = out
 
     return out
 
@@ -128,22 +126,33 @@ def verify_loop_prevention(module):
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
     switch_name = module.params['switch_name']
+    delay = module.params['delay']
+    retries = module.params['retries']
     log_file = module.params['log_file']
 
-    cmd = 'python /var/log/print_all.py {}'.format(log_file)
-    parsed_out = execute_commands(module, cmd)
+    while retries:
+        failure_summary = ''
+        RESULT_STATUS = True
+        cmd = 'python /var/log/print_all.py {}'.format(log_file)
+        parsed_out = execute_commands(module, cmd)
 
-    if parsed_out:
-        if ('Marker: -- ignored --' not in parsed_out and
-                'Withdrawn Routes' not in parsed_out):
+        if parsed_out:
+            if ('Marker: -- ignored --' not in parsed_out and
+                    'Withdrawn Routes' not in parsed_out):
+                RESULT_STATUS = False
+                failure_summary += 'On switch {} '.format(switch_name)
+                failure_summary += 'loop prevention message is not present\n'
+        else:
             RESULT_STATUS = False
             failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'loop prevention message is not present\n'
-    else:
-        RESULT_STATUS = False
-        failure_summary += 'On switch {} '.format(switch_name)
-        failure_summary += 'result cannot be verified since loop '
-        failure_summary += 'prevention file {} is empty'.format(log_file)
+            failure_summary += 'result cannot be verified since loop '
+            failure_summary += 'prevention file {} is empty'.format(log_file)
+
+        if not RESULT_STATUS:
+            retries -= 1
+            time.sleep(delay)
+        else:
+            break
 
     # Store the failure summary in hash
     HASH_DICT['result.detail'] = failure_summary

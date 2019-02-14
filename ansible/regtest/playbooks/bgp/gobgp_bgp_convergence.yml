@@ -40,10 +40,6 @@
         name: gobgpd
         state: restarted
 
-    - name: Wait few seconds for bgp convergence
-      pause:
-        seconds: 35
-
     - file:
         path: "{{ bgp_log_dir }}"
         state: directory
@@ -53,7 +49,7 @@
         switch_name: "{{ inventory_hostname }}"
 
     - pause:
-        seconds: 5
+        seconds: "{{ package_delay }}"
 
 
 - hosts: leaf[1]
@@ -65,7 +61,7 @@
         remove: True
 
     - pause:
-        seconds: 20
+        seconds: "{{ package_delay }}"
 
 
 - hosts: leaf[0]:spine

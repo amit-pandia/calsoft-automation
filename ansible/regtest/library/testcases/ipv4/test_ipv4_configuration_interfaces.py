@@ -20,6 +20,8 @@
 
 import shlex
 
+import time
+
 from collections import OrderedDict
 
 from ansible.module_utils.basic import AnsibleModule
@@ -115,28 +117,38 @@ def verify_ipv4_configuration_interfaces(module):
     global RESULT_STATUS, HASH_DICT
     failure_summary = ''
     switch_name = module.params['switch_name']
+    retries = module.params['retries']
+    delay = module.params['delay']
     switch_id = switch_name[-2::]
 
     # Get the current/running configurations
     execute_commands(module, 'cat /etc/network/interfaces')
+    while retries:
+        failure_summary = ''
+        RESULT_STATUS = True
+        eth_list = [x for x in range(1, 32) if x % 2 != 0]
+        for eth in eth_list:
+            eth_out = execute_commands(module, 'ip addr show xeth{}'.format(eth))
+            if ('192.168.{}.{}'.format(eth, switch_id) not in eth_out and
+                    '192.168.{}.255'.format(eth) not in eth_out):
+                RESULT_STATUS = False
+                failure_summary += 'On switch {} '.format(switch_name)
+                failure_summary += 'xeth{} interface '.format(eth)
+                failure_summary += 'is not configurable\n'
 
-    eth_list = [x for x in range(1, 32) if x % 2 != 0]
-    for eth in eth_list:
-        eth_out = execute_commands(module, 'ip addr show xeth{}'.format(eth))
-        if ('192.168.{}.{}'.format(eth, switch_id) not in eth_out and
-                '192.168.{}.255'.format(eth) not in eth_out):
+        # Get the GOES status info
+        goes_status = execute_commands(module, 'goes status')
+
+        if 'not ok' in goes_status.lower():
             RESULT_STATUS = False
             failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'xeth{} interface '.format(eth)
-            failure_summary += 'is not configurable\n'
+            failure_summary += 'GOES status is NOT OK\n'
 
-    # Get the GOES status info
-    goes_status = execute_commands(module, 'goes status')
-
-    if 'not ok' in goes_status.lower():
-        RESULT_STATUS = False
-        failure_summary += 'On switch {} '.format(switch_name)
-        failure_summary += 'GOES status is NOT OK\n'
+        if not RESULT_STATUS:
+            retries -= 1
+            time.sleep(delay)
+        else:
+            break
 
     HASH_DICT['result.detail'] = failure_summary
 
@@ -147,6 +159,8 @@ def main():
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
             log_dir_path=dict(required=False, type='str'),
         )
     )

@@ -153,6 +153,8 @@ def verify_gobgp_route_advertise(module):
     package_name = module.params['package_name']
     spine_list = module.params['spine_list']
     leaf_list = module.params['leaf_list']
+    delay = module.params['delay']
+    retries = 60
     is_ibgp = module.params['is_ibgp']
     check_reflector = module.params['check_reflector']
     routes_to_check = []
@@ -176,44 +178,52 @@ def verify_gobgp_route_advertise(module):
 
     # Get all advertised routes
     cmd = 'gobgp global rib'
-    all_routes = execute_commands(module, cmd)
+    while retries:
+        RESULT_STATUS = True
+        failure_summary = ''
+        all_routes = execute_commands(module, cmd)
 
-    if all_routes:
-        all_routes = all_routes.lower()
-        if is_ibgp or check_reflector:
-            switch_list = leaf_list if switch_name in spine_list else spine_list
-            for switch in switch_list:
-                routes_to_check.append('192.168.{}.1/32'.format(switch[-2::]))
+        if all_routes:
+            all_routes = all_routes.lower()
+            if is_ibgp or check_reflector:
+                switch_list = leaf_list if switch_name in spine_list else spine_list
+                for switch in switch_list:
+                    routes_to_check.append('192.168.{}.1/32'.format(switch[-2::]))
 
-            routes_to_check.append('192.168.{}.1/32'.format(switch_name[-2::]))
+                routes_to_check.append('192.168.{}.1/32'.format(switch_name[-2::]))
 
-            if check_reflector:
-                if switch_name in leaf_list:
-                    if (all_routes.count('clusterlist: [192.168.0.1]') != 2 or
-                            all_routes.count('originator') != 2):
-                        RESULT_STATUS = False
-                        failure_summary += 'On switch {} '.format(switch_name)
-                        failure_summary += 'route reflector originator/'
-                        failure_summary += 'clusterlist config is not present in '
-                        failure_summary += 'output of command {}\n'.format(cmd)
+                if check_reflector:
+                    if switch_name in leaf_list:
+                        if (all_routes.count('clusterlist: [192.168.0.1]') != 2 or
+                                all_routes.count('originator') != 2):
+                            RESULT_STATUS = False
+                            failure_summary += 'On switch {} '.format(switch_name)
+                            failure_summary += 'route reflector originator/'
+                            failure_summary += 'clusterlist config is not present in '
+                            failure_summary += 'output of command {}\n'.format(cmd)
+            else:
+                for switch in spine_list + leaf_list:
+                    routes_to_check.append('192.168.{}.1/32'.format(switch[-2::]))
+
+            for route in routes_to_check:
+                if route not in all_routes:
+                    RESULT_STATUS = False
+                    failure_summary += 'On switch {} '.format(switch_name)
+                    failure_summary += 'advertised route for network {} '.format(
+                        route)
+                    failure_summary += 'is not showing up '
+                    failure_summary += 'in the output of {}\n'.format(cmd)
         else:
-            for switch in spine_list + leaf_list:
-                routes_to_check.append('192.168.{}.1/32'.format(switch[-2::]))
+            RESULT_STATUS = False
+            failure_summary += 'On switch {} '.format(switch_name)
+            failure_summary += 'result cannot be verified since '
+            failure_summary += 'output of command {} is None'.format(cmd)
 
-        for route in routes_to_check:
-            if route not in all_routes:
-                RESULT_STATUS = False
-                failure_summary += 'On switch {} '.format(switch_name)
-                failure_summary += 'advertised route for network {} '.format(
-                    route)
-                failure_summary += 'is not showing up '
-                failure_summary += 'in the output of {}\n'.format(cmd)
-    else:
-        RESULT_STATUS = False
-        failure_summary += 'On switch {} '.format(switch_name)
-        failure_summary += 'result cannot be verified since '
-        failure_summary += 'output of command {} is None'.format(cmd)
-
+        if not RESULT_STATUS:
+            retries -= 1
+            time.sleep(delay)
+        else:
+            break
     # Store the failure summary in hash
     HASH_DICT['result.detail'] = failure_summary
 
@@ -231,6 +241,9 @@ def main():
             leaf_list=dict(required=False, type='list', default=[]),
             is_ibgp=dict(required=False, type='bool', default=False),
             check_reflector=dict(required=False, type='bool', default=False),
+            delay=dict(required=False, type='int', default=10),
+            retries=dict(required=False, type='int', default=6),
+            dry_run_mode=dict(required=False, type='bool', default=False),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
         )

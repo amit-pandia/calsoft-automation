@@ -40,10 +40,6 @@
         name: gobgpd
         state: restarted
 
-    - name: Wait few seconds for bgp convergence
-      pause:
-        seconds: 35
-
     - name: Add advertise route
       add_remove_route:
         switch_name: "{{ inventory_hostname }}"
