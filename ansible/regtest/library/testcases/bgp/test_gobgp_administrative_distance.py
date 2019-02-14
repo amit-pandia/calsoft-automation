@@ -143,7 +143,7 @@ def verify_gobgp_administrative_distance(module):
     spine_list = module.params['spine_list']
     leaf_list = module.params['leaf_list']
     delay = module.params['delay']
-    retries = module.params['retries']
+    retries = 6
     routes_to_check = []
 
     # Get the gobgp config

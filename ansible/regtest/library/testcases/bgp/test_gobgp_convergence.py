@@ -171,7 +171,7 @@ def verify_gobgp_convergence(module):
                     failure_summary += 'route to network {} '.format(route)
                     failure_summary += 'is not present even after adding the route\n'
             else:
-                if route in all_routes:
+                if ("B>* " + route) in all_routes:
                     RESULT_STATUS = False
                     failure_summary += 'On switch {} '.format(switch_name)
                     failure_summary += 'route to network {} '.format(route)

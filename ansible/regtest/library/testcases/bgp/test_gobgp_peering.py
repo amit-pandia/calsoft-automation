@@ -145,7 +145,7 @@ def execute_commands(module, cmd):
     return out
 
 
-def verify_neighbor_relationship(module):
+def verify_neighbor_relationship(module, stage='' ):
     """
     Method to verify if bgp neighbor relation is established or not.
     :param module: The Ansible module to fetch input parameters.
@@ -201,7 +201,7 @@ def verify_neighbor_relationship(module):
         if gobgp_out.count('establ') != neighbor_count:
             RESULT_STATUS = False
             failure_summary += 'On switch {} '.format(switch_name)
-            failure_summary += 'bgp state is not established for neighbors\n'
+            failure_summary += 'bgp state is not established for neighbors {}\n'.format(stage)
     else:
         RESULT_STATUS = False
         failure_summary += 'On switch {} '.format(switch_name)
@@ -248,7 +248,7 @@ def verify_gobgp_peering(module):
             time.sleep(delay)
 
         # Verify bgp neighbor relationship
-        failure_summary1 += verify_neighbor_relationship(module)
+        failure_summary1 += verify_neighbor_relationship(module, "before down")
 
         if not RESULT_STATUS:
             retry -= 1
@@ -272,7 +272,7 @@ def verify_gobgp_peering(module):
         RESULT_STATUS = True
 
         # Verify bgp neighbor relationship
-        failure_summary2 += verify_neighbor_relationship(module)
+        failure_summary2 += verify_neighbor_relationship(module, "after down")
 
         if not RESULT_STATUS:
             retry -= 1
@@ -297,7 +297,7 @@ def verify_gobgp_peering(module):
         RESULT_STATUS = True
 
         # Verify bgp neighbor relationship
-        failure_summary3 += verify_neighbor_relationship(module)
+        failure_summary3 += verify_neighbor_relationship(module, "after up")
 
         if not RESULT_STATUS:
             retries -= 1
@@ -306,8 +306,12 @@ def verify_gobgp_peering(module):
             break
 
     # Store the failure summary in hash
-    HASH_DICT['result.detail'] = failure_summary1 + failure_summary2 + failure_summary3
-    RESULT_STATUS = all([RESULT_STATUS, RESULT_STATUS1, RESULT_STATUS2])
+    if if_down:
+    	HASH_DICT['result.detail'] = failure_summary1 + failure_summary2 + failure_summary3
+    	RESULT_STATUS = all([RESULT_STATUS, RESULT_STATUS1, RESULT_STATUS2])
+    else:
+	HASH_DICT['result.detail'] = failure_summary3
+	RESULT_STATUS = RESULT_STATUS
 
     # Get the GOES status info
     execute_commands(module, 'goes status')

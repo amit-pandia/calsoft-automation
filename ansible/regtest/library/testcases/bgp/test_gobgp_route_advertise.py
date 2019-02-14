@@ -154,7 +154,7 @@ def verify_gobgp_route_advertise(module):
     spine_list = module.params['spine_list']
     leaf_list = module.params['leaf_list']
     delay = module.params['delay']
-    retries = module.params['retries']
+    retries = 60
     is_ibgp = module.params['is_ibgp']
     check_reflector = module.params['check_reflector']
     routes_to_check = []
