@@ -64,7 +64,9 @@ def main():
             testbed_name=dict(required=False, type='str'),
             playbook_dir=dict(required=False, type='str'),
             goes_version=dict(required=False, type='str'),
+            goes_build_id=dict(required=False, type='str'),
             goes_tags=dict(required=False, type='str'),
+            goes_vnetd_id=dict(required=False, type='str'),
             kernel_version=dict(required=False, type='str')
         )
     )
