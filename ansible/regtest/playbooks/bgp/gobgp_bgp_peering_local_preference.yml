@@ -64,7 +64,17 @@
         seconds: 3
 
 
-- hosts: leaf:spine
+- hosts: leaf[0]
+  become: true
+  tasks:
+    - name: Execute command on leaf
+      command: "gobgp global rib add -a ipv4 192.168.{{ groups['spine'][0][-2::] }}.1/32 local-pref 150"
+
+    - pause:
+        seconds: 3
+
+
+- hosts: leaf[0]
   become: true
   tasks:
     - name: Verify gobgp peering local preference

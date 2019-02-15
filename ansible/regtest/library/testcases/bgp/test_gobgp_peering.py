@@ -331,7 +331,7 @@ def main():
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
             delay=dict(required=False, type='int', default=10),
-            retries=dict(required=False, type='int', default=6),
+            retries=dict(required=False, type='int', default=12),
             dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )

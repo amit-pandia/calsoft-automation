@@ -158,11 +158,10 @@ def verify_gobgp_convergence(module):
 
     # Get all advertised routes
     cmd = "vtysh -c 'sh ip route'"
-    all_routes = execute_commands(module, cmd)
-
     while(retries):
         failure_summary = ''
         RESULT_STATUS = True
+	all_routes = execute_commands(module, cmd)
         if all_routes:
             if route_present:
                 if route not in all_routes:
@@ -206,7 +205,7 @@ def main():
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
             delay=dict(required=False, type='int', default=10),
-            retries=dict(required=False, type='int', default=6),
+            retries=dict(required=False, type='int', default=12),
             dry_run_mode=dict(required=False, type='bool', default=False),
         )
     )

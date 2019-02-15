@@ -143,7 +143,7 @@ def verify_gobgp_administrative_distance(module):
     spine_list = module.params['spine_list']
     leaf_list = module.params['leaf_list']
     delay = module.params['delay']
-    retries = 6
+    retries = module.params['retries']
     routes_to_check = []
 
     # Get the gobgp config
@@ -223,8 +223,8 @@ def main():
             package_name=dict(required=False, type='str'),
             spine_list=dict(required=False, type='list', default=[]),
             leaf_list=dict(required=False, type='list', default=[]),
-            delay=dict(required=False, type='int', default=10),
-            retries=dict(required=False, type='int', default=6),
+            delay=dict(required=False, type='int', default=15),
+            retries=dict(required=False, type='int', default=50),
             dry_run_mode=dict(required=False, type='bool', default=False),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
