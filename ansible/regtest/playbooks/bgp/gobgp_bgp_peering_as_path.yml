@@ -60,9 +60,12 @@
         seconds: "{{ package_delay }}"
 
 
-- hosts: leaf:spine
+- hosts: leaf[0]
   become: true
   tasks:
+    - name: Execute command on leaf
+      command: "gobgp global rib add -a ipv4 192.168.{{ groups['spine'][0][-2::] }}.1/32 aspath 3,3,65243"
+
     - name: Verify gobgp peering as path
       test_gobgp_local_preference:
         switch_name: "{{ inventory_hostname }}"

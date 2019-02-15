@@ -174,7 +174,8 @@ def verify_gobgp_local_preference(module):
                 neighbor_ip = line.split().pop()
                 neighbor_ip = neighbor_ip.replace('"', '')
 
-        cmd = 'gobgp nei {} adj-out'.format(neighbor_ip)
+        execute_commands(module, 'gobgp nei {} adj-out'.format(neighbor_ip))
+	cmd = 'gobgp global rib'
     elif switch_name == spine:
         cmd = 'gobgp global rib'
 
@@ -218,7 +219,7 @@ def main():
             package_name=dict(required=False, type='str'),
             leaf=dict(required=False, type='str'),
             delay=dict(required=False, type='int', default=10),
-            retries=dict(required=False, type='int', default=6),
+            retries=dict(required=False, type='int', default=12),
             dry_run_mode=dict(required=False, type='bool', default=False),
             spine=dict(required=False, type='str'),
             as_path=dict(required=False, type='bool', default=False),
