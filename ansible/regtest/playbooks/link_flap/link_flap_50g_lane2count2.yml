@@ -45,6 +45,7 @@
     - name: Update interfaces file for fiber ports
       test_fiber_ports:
         cmd: "2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1"
+        remove: False
       register: fmodule_out
 
     - name: Restart goes
@@ -94,6 +95,10 @@
     - name: Flap the links 200 times
       shell: /tmp/./flap 2 200
       when: not dry_run
+
+    - name: Wait few seconds
+      pause:
+        seconds: 10
 
     - name: Verify the link status
       test_link_status:

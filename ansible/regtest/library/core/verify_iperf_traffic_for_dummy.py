@@ -136,6 +136,7 @@ def verify_traffic(module):
     packet_size_list = module.params['packet_size_list'].split(',')
     delay = module.params['delay']
     retries = module.params['retries']
+    atime = module.params['atime']
 
     switch_list.remove(switch_name)
     neighbor_switch = switch_list[0]
@@ -159,8 +160,8 @@ def verify_traffic(module):
         # Initiate iperf client and verify traffic
         for size in packet_size_list:
             port += 1
-            traffic_cmd = 'iperf -c {} -t 5 -M {} -p {} -P 1 -B {}'.format(
-                neighbor_ip, size, port, self_ip
+            traffic_cmd = 'iperf -c {} -t {} -M {} -p {} -P 1 -B {}'.format(
+                neighbor_ip, atime, size, port, self_ip
             )
             traffic_out = execute_commands(module, traffic_cmd)
 
@@ -189,6 +190,7 @@ def main():
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
             delay=dict(required=False, type='int'),
+            atime=dict(required=False, type='int', default=5),
             retries=dict(required=False, type='int'),
             dry_run_mode=dict(required=False, type='bool', default=False),
             switch_list=dict(required=False, type='list'),
