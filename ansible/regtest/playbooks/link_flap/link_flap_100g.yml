@@ -52,6 +52,10 @@
       shell: /tmp/./flap 1 500
       when: not dry_run
 
+    - name: Wait few seconds
+      pause:
+        seconds: 10
+
     - name: Verify the link status
       test_link_status:
         switch_name: "{{ inventory_hostname }}"

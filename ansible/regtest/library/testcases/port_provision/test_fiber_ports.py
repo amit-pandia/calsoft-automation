@@ -98,6 +98,7 @@ def interface(cmd, module):
     cmd1 = "goes hget platina-mk1 qsfp.compliance"
     out = execute_commands(module, cmd1).splitlines()
     eth_list1 = list()
+    rcmd = cmd
     cmd = [int(i) for i in cmd]
     #print(str(cmd)+ "!@#$%")
     for line in out:
@@ -171,6 +172,7 @@ def update(cmd, module):
     cmd1 = "goes hget platina-mk1 qsfp.compliance"
     out = execute_commands(module, cmd1).splitlines()
     eth_list1 = list()
+    rcmd = cmd
     cmd = [int(i) for i in cmd]
     for line in out:
         if ("100G CWDM4" in line or "100GBASE-LR4" in line or "100GBASE-SR4" in line):
@@ -210,7 +212,6 @@ def update(cmd, module):
                 break
 
         line_to_del = 12 * int(cmd[eth - 1])
-        cmd[eth - 1] = 1
         del afile[aindex:aindex + line_to_del]
         if eth in alist1:
             replace = ''
@@ -246,7 +247,7 @@ allow-vnet xeth{0}\n""".format(eth, aoctet)
         for line in afile:
             fd.write(line)
 
-    HASH_DICT['command'] = cmd
+    HASH_DICT['command'] = module.params['cmd']
     HASH_DICT['eth_list'] = eth_list
 
 
