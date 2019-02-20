@@ -45,6 +45,7 @@
     - name: Update interfaces file for fiber ports
       test_fiber_ports:
         cmd: "4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1"
+        remove: False
       register: fmodule_out
 
     - name: Restart goes

@@ -246,7 +246,7 @@ allow-vnet xeth{0}\n""".format(eth, aoctet)
         for line in afile:
             fd.write(line)
 
-    HASH_DICT['command'] = astr[:-1]
+    HASH_DICT['command'] = cmd
     HASH_DICT['eth_list'] = eth_list
 
 
