@@ -113,9 +113,9 @@ def test_ntp(module):
 	prev_val = module.params['prev_val']
 	stage = module.params['stage']
 
-	if stage == "before goes restart"
+	if stage == "before goes restart":
 		atemp = execute_commands(module, "date").strip()
-		HASH_DICT['date'] = int(atemp)
+		HASH_DICT['date'] = int(atemp[-4::])
 		execute_commands(module, "date - -set = '2 OCT 2018 18:00:00'")
 		aout = execute_commands(module, "date")
 		if "Tue Oct 2 18:00:00 PDT 2018" not in aout:
@@ -124,8 +124,11 @@ def test_ntp(module):
 			failure_summary += "on {}".format(switch_name)
 
 	elif stage == "restore":
-		cur_val = execute_commands(module, "date").strip()[-4:]
-		if not prev_val[-4:] == cur_val:
+		cur_val = int(execute_commands(module, "date").strip()[-4:])
+		#print(prev_val, type(prev_val))
+		#print(cur_val, type(cur_val))
+		#raise("Intentional")
+		if not int(prev_val) == cur_val:
 			RESULT_STATUS = False
 			failure_summary += "Current date time is not restored "
 			failure_summary += "on {}.\n".format(switch_name)
@@ -144,18 +147,18 @@ def main():
         argument_spec=dict(
             switch_name=dict(required=False, type='str'),
 	    delay=dict(required=False, type='int', default=10),
-	        prev_val=dict(required=False, type='int'),
+	    prev_val=dict(required=False, type='str'),
             retries=dict(required=False, type='int', default=6),
             dry_run_mode=dict(required=False, type='bool', default=False),
             package_name=dict(required=False, type='str'),
-	        stage=dict(required=False, type='str', default=""),
+	    stage=dict(required=False, type='str', default=""),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
         )
     )
 
     global HASH_DICT, RESULT_STATUS
-    verify_bgp_as_path(module)
+    test_ntp(module)
 
     # Calculate the entire test result
     HASH_DICT['result.status'] = 'Passed' if RESULT_STATUS else 'Failed'
