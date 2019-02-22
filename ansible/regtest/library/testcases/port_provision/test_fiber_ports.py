@@ -172,6 +172,7 @@ def update(cmd, module):
     cmd1 = "goes hget platina-mk1 qsfp.compliance"
     out = execute_commands(module, cmd1).splitlines()
     eth_list1 = list()
+    speed = int(module.params['speed'])
     rcmd = cmd
     cmd = [int(i) for i in cmd]
     for line in out:
@@ -222,12 +223,12 @@ iface xeth{0}-{2} inet static
     address 10.{0}.{2}.{1}
     netmask 255.255.255.0
 pre-up ip link set $IFACE up
-pre-up ethtool -s $IFACE speed 100000 autoneg off
+pre-up ethtool -s $IFACE speed {3} autoneg off
 pre-up ethtool --set-priv-flags $IFACE copper off
 pre-up ethtool --set-priv-flags $IFACE fec74 off
 pre-up ethtool --set-priv-flags $IFACE fec91 on
 post-down ip link set $IFACE down
-allow-vnet xeth{0}-{2}\n""".format(eth, aoctet, i)
+allow-vnet xeth{0}-{2}\n""".format(eth, aoctet, i, (speed*1000))
         else:
             replace = """
 auto xeth{0}
@@ -257,6 +258,7 @@ def main():
         argument_spec=dict(
             cmd=dict(required=False, type="str"),
             remove=dict(required=False, type="bool", default=True),
+	    speed=dict(required=False, type='int', default=100),
         )
     )
     # Verify bgp neighbors
