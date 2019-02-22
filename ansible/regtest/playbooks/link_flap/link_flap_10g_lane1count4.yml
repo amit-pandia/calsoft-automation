@@ -46,6 +46,7 @@
       test_fiber_ports:
         cmd: "4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1"
         remove: False
+        speed: 10
       register: fmodule_out
     
     - name: Restart goes

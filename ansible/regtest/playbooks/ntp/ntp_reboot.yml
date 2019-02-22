@@ -101,21 +101,14 @@
         log_dir_path: "{{ ntp_log_dir }}"
       register: module_out
 
-    - name: Power cycle the invader
-      shell: "redis-cli -h 172.17.3.{{ groups['leaf'][1][-2::] }} hset platina-mk1-bmc psu.powercycle true"
+    - name: Reboot invader
+      shell: sleep 2 && shutdown -r now
       async: 1
       poll: 0
       ignore_errors: true
-      delegate_to: 127.0.0.1
-      when: not dry_run
 
     - name: waiting for switch to come back after reboot
       local_action: wait_for host={{ ansible_ssh_host }} state=started port=22 delay=60 timeout=300 connect_timeout=15
-
-    - name: Wait some time
-      pause:
-        seconds: "{{ package_delay }}"
-      when: not dry_run
 
     - name: Check goes status
       restart_and_check_goes_status:

@@ -157,11 +157,11 @@ def verify_gobgp_administrative_distance(module):
     cmd = 'gobgp nei'
     execute_commands(module, cmd)
 
-    # Get all ip routes
-    cmd = "vtysh -c 'sh ip route'"
-    all_routes = execute_commands(module, cmd)
-
     while(retries):
+	# Get all ip routes
+	cmd = "vtysh -c 'sh ip route'"
+    	all_routes = execute_commands(module, cmd)
+
         RESULT_STATUS = True
         failure_summary = ''
         if all_routes:
@@ -177,7 +177,7 @@ def verify_gobgp_administrative_distance(module):
                     failure_summary += 'On switch {} '.format(switch_name)
                     failure_summary += 'bgp route for network {} '.format(route)
                     failure_summary += 'is not showing up '
-                    failure_summary += 'in the output of {}\n'.format(cmd)
+                    failure_summary += 'in the output of {} for {}th retry\n'.format(cmd, retries)
 
             for route in all_routes.splitlines():
                 route = route.strip()
@@ -189,7 +189,7 @@ def verify_gobgp_administrative_distance(module):
                             RESULT_STATUS = False
                             failure_summary += 'On switch {} '.format(switch_name)
                             failure_summary += 'administrative value is not present '
-                            failure_summary += 'in the bgp route {}\n'.format(route)
+                            failure_summary += 'in the bgp route {} for {}th retry.\n'.format(route, retries)
 
                         # if not route.startswith('B>*'):
                         #     RESULT_STATUS = False
@@ -200,7 +200,7 @@ def verify_gobgp_administrative_distance(module):
             RESULT_STATUS = False
             failure_summary += 'On switch {} '.format(switch_name)
             failure_summary += 'administrative distance cannot be verified since '
-            failure_summary += 'output of command {} is None'.format(cmd)
+            failure_summary += 'output of command {} is None for {}th retry.'.format(cmd, retries)
 
         if not RESULT_STATUS:
             retries -= 1
