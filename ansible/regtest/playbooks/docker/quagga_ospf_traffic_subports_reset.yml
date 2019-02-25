@@ -105,7 +105,7 @@
 
     - shell: rm -rf ~/volumes/quagga/*
 
-    - command: ip -all netns del
+    - command: "ip netns | xargs -I {} sudo ip netns delete {}"
 
     - name: Execute commands
       command: "{{ item }}"
