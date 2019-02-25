@@ -14,3 +14,4 @@
     version_details: "{{ version_out.stdout }}"
     tag_details: "{{ tag_out.stdout }}"
   delegate_to: 127.0.0.1
+  ignore_errors: yes
