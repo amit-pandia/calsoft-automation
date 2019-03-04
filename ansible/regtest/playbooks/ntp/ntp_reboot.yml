@@ -21,7 +21,7 @@
       register: start_time
 
     - set_fact:
-        hash_name: "ntp_powercycle_{{ start_time.stdout }}"
+        hash_name: "ntp_reboot_{{ start_time.stdout }}"
         start_time: "{{ start_time.stdout }}"
 
 
