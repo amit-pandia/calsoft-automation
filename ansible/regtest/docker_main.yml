@@ -10,7 +10,7 @@
 # Reset invaders
 - include: playbooks/master_reset_invaders.yml
 
-#- include: playbooks/docker/quagga_ospf_traffic_vlan.yml
+- include: playbooks/docker/quagga_ospf_traffic_vlan.yml
 
 - include: playbooks/docker/quagga_ospf_traffic_subports.yml
 
