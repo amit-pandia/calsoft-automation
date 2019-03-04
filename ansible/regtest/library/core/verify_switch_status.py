@@ -20,10 +20,8 @@
 
 import shlex
 import time
-
-from collections import OrderedDict
-
 from ansible.module_utils.basic import AnsibleModule
+from collections import OrderedDict
 
 DOCUMENTATION = """
 ---
@@ -184,7 +182,7 @@ def verify_port_links(module):
     # Verify networking service status before upgrade
     failure_summary += verify_networking_status(module, switch_name)
 
-    for eth in range(1, 33):
+    for eth in range(1, 33, 2):
         # Verify interface media is set to correct value
         cmd = 'goes hget {} vnet.xeth{}.media'.format(platina_redis_channel, eth)
         out = run_cli(module, cmd)
