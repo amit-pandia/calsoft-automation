@@ -83,7 +83,7 @@
 
     - shell: rm -rf ~/volumes/quagga/*
 
-    - command: "ip netns | xargs -I {} sudo ip netns delete {}"
+    - shell: "ip netns | xargs -I {} sudo ip netns delete {}"
 
     - name: Restore backup of /etc/quagga/ospfd.conf
       copy:
