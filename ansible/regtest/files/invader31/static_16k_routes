@@ -11269,8 +11269,9 @@ post-up route add -net 2.2.44.233 netmask 255.255.255.255 gw 10.0.21.30
 post-up route add -net 2.2.44.234 netmask 255.255.255.255 gw 10.0.21.30
 post-up route add -net 2.2.44.235 netmask 255.255.255.255 gw 10.0.21.30
 post-down ip link set $IFACE down
+allow-vnet xeth21
 
-auth xeth22
+auto xeth22
 iface xeth22 inet static
     address 10.0.22.31
     netmask 255.255.255.0
