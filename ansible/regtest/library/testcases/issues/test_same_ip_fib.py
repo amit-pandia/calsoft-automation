@@ -205,29 +205,12 @@ def verify_fib_entries(module):
         cmd = 'ip link set xeth{} netns {}'.format(eth[i], container_name[i])
         execute_commands(module, cmd)
 
- #       cmd = 'ip netns set {} {}'.format(container_name[i], eth[i])
- #       execute_commands(module, cmd)
-
         cmd = 'ip netns exec {} ip link set up xeth{}'.format(container_name[i], eth[i])
         execute_commands(module, cmd)
 
         cmd = 'ip netns exec {} ip add add {}/24 dev xeth{}'.format(container_name[i], ip, eth[i])
         execute_commands(module, cmd)
 
-#	cmd = 'goes vnet show ip fib'
-#	fib_out = execute_commands(module, cmd).splitlines()
-#	for line in fib_out:
-#	    if ip in line and 'xeth{}'.format(eth[i]) in line:
-#		    line = line.strip()
-#		    temp = line.split()[-1]
-#		    fib1.append(temp.split(':')[0])
-
-#    if fib1[0] == fib1[1]:  #fib1 and
-#        RESULT_STATUS = False
-#        failure_summary += 'On switch {} '.format(switch_name)
-#        failure_summary += 'FIB entries are missing while '
-#        failure_summary += 'assigning same IP to 2 different netns.\n'
-#        failure_summary += 'FIB Output- {}\n'.format(fib_out)
 
     HASH_DICT['result.detail'] = failure_summary
 
