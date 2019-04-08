@@ -159,7 +159,7 @@ def verify_fib_entries(module):
     time.sleep(15)
     for i in range(len(container_name)):
         # Bring down the interface from the docker container
-        cmd = '{} down {} xeth{}'.format(d_move, container_name[i], eth[i])
+        cmd = 'docker exec {} ifconfig xeth{} down '.format(container_name[i], eth[i])
         out = execute_commands(module, cmd)
         if out:
             RESULT_STATUS = False
@@ -168,8 +168,36 @@ def verify_fib_entries(module):
             failure_summary += 'Down output- {}\n'.format(out)
 
     ip = '10.1.0.{}'.format(switch_name[-2::])
-    fib = []
+    fib1 = []
+    
+    # remove the docker and name spaces
+    for i in range(len(container_name)):
+        cmd = "ip netns delete {}".format(container_name[i])
+        out = execute_commands(module, cmd)
 
+    # Adding Xeth5 and xeth4 to previous state
+    cmd = "rmmod platina-mk1"
+    out = execute_commands(module, cmd)
+    time.sleep(2)
+
+    cmd = "modprobe platina-mk1 provision=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1"
+    out = execute_commands(module, cmd)
+    time.sleep(2)
+
+    cmd = "ifdown -a --allow vnet"
+    out = execute_commands(module, cmd)
+    time.sleep(2)
+
+    cmd = "ifup -a --allow vnet"
+    out = execute_commands(module, cmd)
+    time.sleep(2)
+
+    cmd = "goes restart"
+    out = execute_commands(module, cmd)
+    time.sleep(10)
+
+
+    
     for i in range(len(container_name)):
         cmd = 'ip netns add {}'.format(container_name[i])
         execute_commands(module, cmd)
@@ -177,8 +205,8 @@ def verify_fib_entries(module):
         cmd = 'ip link set xeth{} netns {}'.format(eth[i], container_name[i])
         execute_commands(module, cmd)
 
-        cmd = 'ip netns set {} {}'.format(container_name[i], eth[i])
-        execute_commands(module, cmd)
+ #       cmd = 'ip netns set {} {}'.format(container_name[i], eth[i])
+ #       execute_commands(module, cmd)
 
         cmd = 'ip netns exec {} ip link set up xeth{}'.format(container_name[i], eth[i])
         execute_commands(module, cmd)
@@ -186,20 +214,20 @@ def verify_fib_entries(module):
         cmd = 'ip netns exec {} ip add add {}/24 dev xeth{}'.format(container_name[i], ip, eth[i])
         execute_commands(module, cmd)
 
-	cmd = 'goes vnet show ip fib'
-	fib_out = execute_commands(module, cmd).splitlines()
-	for line in fib_out:
-	    if ip in line and 'xeth{}'.format(eth[i]) in line:
-		    line = line.strip()
-		    temp = line.split()[-1]
-		    fib.append(temp.split(':')[0])
+#	cmd = 'goes vnet show ip fib'
+#	fib_out = execute_commands(module, cmd).splitlines()
+#	for line in fib_out:
+#	    if ip in line and 'xeth{}'.format(eth[i]) in line:
+#		    line = line.strip()
+#		    temp = line.split()[-1]
+#		    fib1.append(temp.split(':')[0])
 
-    if fib and fib[0] == fib[1]:
-        RESULT_STATUS = False
-        failure_summary += 'On switch {} '.format(switch_name)
-        failure_summary += 'FIB entries are missing while '
-        failure_summary += 'assigning same IP to 2 different netns.\n'
-        failure_summary += 'FIB Output- {}\n'.format(fib_out)
+#    if fib1[0] == fib1[1]:  #fib1 and
+#        RESULT_STATUS = False
+#        failure_summary += 'On switch {} '.format(switch_name)
+#        failure_summary += 'FIB entries are missing while '
+#        failure_summary += 'assigning same IP to 2 different netns.\n'
+#        failure_summary += 'FIB Output- {}\n'.format(fib_out)
 
     HASH_DICT['result.detail'] = failure_summary
 
