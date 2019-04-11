@@ -12,7 +12,7 @@
         start_time: "{{ start_time.stdout }}"
 
 
-- hosts: spine:leaf[1]
+- hosts: spine:leaf
   become: true
   ignore_errors: yes
   tasks:
