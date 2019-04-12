@@ -1,3 +1,5 @@
+---
+
 - name: reboot the switch
   shell: "sleep 5 && reboot"
   async: 1
