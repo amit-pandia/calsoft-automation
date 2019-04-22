@@ -1,0 +1,69 @@
+ - name: Reboot the invader
+   shell: "redis-cli -h {{ bmc_redis_ip }} hset platina-mk1-bmc psu.powercycle true"
+   when: not dry_run
+
+ - name:  Wait for few seconds for bgp to establish connection
+   pause:
+     seconds: 120
+   when: not dry_run
+
+ - include: ../get_goes_status.yml 
+   when: not dry_run
+
+ - name: Verify quagga status
+   command: "service quagga status"
+   register: quagga_status
+   when: not dry_run
+
+ - debug: 
+     msg: "quagga service is in active state"
+   when: "' Active: active ' in quagga_status.stdout"
+
+ - name: Verify frr bgp peering ebgp loopback
+   test_bgp_peering_loopback:
+     switch_name: "{{ inventory_hostname }}"
+     config_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/bgp_peering_ebgp.conf') }}"
+     spine_list: "{{ groups['spine'] }}"
+     leaf_list: "{{ groups['leaf'] }}"
+     is_ping: True
+     package_name: "quagga"
+     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+     log_dir_path: "{{ system_restartability_log_dir }}"
+   register: module_out
+   when: not dry_run
+
+ - name: Verify frr bgp peering ebgp loopback
+   test_bgp_peering_loopback:
+     switch_name: "{{ inventory_hostname }}"
+     config_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/bgp_peering_ebgp.conf') }}"
+     spine_list: "{{ groups['spine'] }}"
+     leaf_list: "{{ groups['leaf'] }}"
+     is_ping: True
+     package_name: "quagga"
+     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+     log_dir_path: "{{ system_restartability_log_dir }}"
+     dry_run_mode: "{{ dry_run }}"
+   register: dry_run_out
+   delegate_to: 127.0.0.1
+   when: dry_run
+
+ - file:
+     path: "{{ system_restartability_log_dir }}"
+     state: directory
+
+ - command: "date +%Y%m%d%T"
+   register: end_time
+
+ - name: Fetch the log file
+   slurp:
+     src: "{{ module_out.log_file_path }}"
+   register: logs
+
+ - name: Store the test result in a hash in redis db on server emulator
+   store_result_in_redis:
+     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+     start_time: "{{ hostvars['server_emulator']['start_time'] }}"
+     end_time: "{{ end_time.stdout }}"
+     hash_dict: "{{ module_out.hash_dict }}"
+     log_content: "{{ logs['content'] | b64decode }}"
+   delegate_to: 127.0.0.1
