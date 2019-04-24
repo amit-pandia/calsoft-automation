@@ -3,5 +3,20 @@
 # Run SDA Verification Test Case
 - include: playbooks/system_restartability/sda_partition_check.yml
 
-# Run Goes afte multiple restart
-- include: playbooks/system_restartability/test_goes_status.yml
+# Run Goes ping restarability with FRR configuration Test Case
+- include: playbooks/system_restartability/goes_ping_restartability_with_frr_configuration.yml
+
+# Run Goes ping restarability with Quagga configurationTest Case
+- include: playbooks/system_restartability/goes_ping_restartability_with_quagga_configuration.yml
+
+# Run Multiple Poercycle with FRR Configuration
+- include: playbooks/system_restartability/goes_status_after_multiple_powercycle_with_frr_configruation.yml
+
+# Run Multiple Powercycle with Quagga Configuration
+- include: playbooks/system_restartability/goes_status_after_multiple_powercycle_with_quagga_configruation.yml
+
+# Run Multiple reboot with FRR Configuration
+- include: playbooks/system_restartability/goes_status_after_multiple_reboot_with_frr_configruation.yml
+
+# Run Multiple Reboot with Quagga Configuration
+- include: playbooks/system_restartability/goes_status_after_multiple_reboot_with_quagga_configruation.yml
