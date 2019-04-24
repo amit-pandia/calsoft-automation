@@ -78,123 +78,27 @@
         msg: "Quagga is in active state"
       when: "' Active: active ' in quagga_status.stdout"
 
-    - name: Verify bgp neighborship and ping
-      test_bgp_peering_loopback:
+    - name: Verify ping on pid kill
+      test_ping_on_pid_kill:
         switch_name: "{{ inventory_hostname }}"
         config_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/bgp_peering_ebgp_loopback.conf') }}"
-        package_name: "quagga"
+        spine_list: "{{ groups['spine'] }}"
+        leaf_list: "{{ groups['leaf'] }}"
+        is_ping: True
+        package_name: "frr"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ system_restartability_log_dir }}"
       register: module_out
       when: not dry_run
 
-    - name: Verify bgp neighborship and ping
-      test_bgp_peering_loopback:
+    - name: Verify ping on pid kill
+      test_ping_on_pid_kill:
         switch_name: "{{ inventory_hostname }}"
         config_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/bgp_peering_ebgp_loopback.conf') }}"
-        package_name: "quagga"
-        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        log_dir_path: "{{ system_restartability_log_dir }}"
-        dry_run_mode: "{{ dry_run }}"
-      register: dry_run_out
-      delegate_to: 127.0.0.1
-      when: dry_run
-
-    - name: Check networking status
-      command: "service networking status"
-      register: network_status
-      ignore_errors: no
-      when: not dry_run
-
-    - debug:
-        msg: "Network is in active state"
-      when: "' Active: active ' in network_status.stdout"
-
-    - name: Check goes status
-      command: goes status
-      register: goes_status
-      ignore_errors: no
-      when: not dry_run
-
-    - debug:
-        msg: "{{  goes_status.stdout }}"
-      when: not dry_run
-
-    - name: Verify bgp neighborship and ping 
-      test_bgp_peering_loopback:
-        switch_name: "{{ inventory_hostname }}"
-        config_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/bgp_peering_ebgp_loopback.conf') }}"
-        package_name: "quagga"
-        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        log_dir_path: "{{ system_restartability_log_dir }}"
-      register: module_out
-      when: not dry_run
-
-    - name: Verify bgp neighborship and ping
-      test_bgp_peering_loopback:
-        switch_name: "{{ inventory_hostname }}"
-        config_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/bgp_peering_ebgp_loopback.conf') }}"
-        package_name: "quagga"
-        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        log_dir_path: "{{ system_restartability_log_dir }}"
-        dry_run_mode: "{{ dry_run }}"
-      register: dry_run_out
-      delegate_to: 127.0.0.1
-      when: dry_run
-
-    - name: Check process id of vnetd
-      command: "pidof vnet-platina-mk1"
-      register: pid1
-      when: not dry_run
-
-    - debug:
-        msg: "{{ pid1.stdout }}"
-      when: not dry_run
-
-    - name: Kill process vnet-platina-mk1
-      shell: "kill -9 {{ pid1.stdout }}"
-      ignore_errors: no
-      when: not dry_run
-
-    - name: Wait few seconds for GOES to come up
-      pause:
-        seconds: 10
-      when: not dry_run
-
-    - name: Check goes status
-      command: goes status
-      register: goes_status
-      ignore_errors: no
-      when: not dry_run
-
-    - debug:
-        msg: "{{ goes_status.stdout }}"
-      when: not dry_run
-
-    - name: Check new process id of vnetd
-      command: "pidof vnet-platina-mk1"
-      register: pid2
-      when: not dry_run
-
-    - debug:
-        msg: "{{ pid2.stdout }}"
-      when: not dry_run
-
-    - name: Verify bgp neighborship and ping
-      test_bgp_peering_loopback:
-        switch_name: "{{ inventory_hostname }}"
-        config_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/bgp_peering_ebgp_loopback.conf') }}"
-        package_name: "quagga"
-        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        log_dir_path: "{{ system_restartability_log_dir }}"
-      register: module_out
-      when: not dry_run
-
-    - name: Verify bgp neighborship and ping
-      test_bgp_peering_loopback:
-        switch_name: "{{ inventory_hostname }}"
-        config_file: "{{ lookup('file', '../../files/{{inventory_hostname}}/bgp_peering_ebgp_loopback.conf') }}"
-        package_name: "quagga"
+        spine_list: "{{ groups['spine'] }}"
+        leaf_list: "{{ groups['leaf'] }}"
+        is_ping: True
+        package_name: "frr"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ system_restartability_log_dir }}"
         dry_run_mode: "{{ dry_run }}"
