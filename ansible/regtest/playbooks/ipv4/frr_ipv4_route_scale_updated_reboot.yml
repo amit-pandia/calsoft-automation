@@ -1,0 +1,32 @@
+ - name: Reboot the invader
+   reboot:
+   when: not dry_run
+
+ - name: Wait few seconds for invader to restart
+   pause:
+     seconds: 80
+   when: not dry_run
+
+ - name: check goes status
+   command: goes status
+   register: goes
+   ignore_errors: no
+   retries: "{{ goes_retry }}"
+   delay: "{{ goes_delay }}"
+   until: goes.rc == 0 
+
+ - name: Print goes status
+   debug:
+     var: goes.stdout
+   ignore_errors: no
+
+ - name: Verify frr ipv4 16k routes scale
+   test_ipv4_routes_scale_updated:
+     switch_name: "{{ inventory_hostname }}"
+     spine_list: "{{ groups['spine'] }}"
+     leaf_list: "{{ groups['leaf'] }}"
+     package_name: 'frr'
+     hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+     log_dir_path: "{{ ipv4_log_dir }}"
+   register: module_out
+   when: not dry_run
