@@ -95,7 +95,7 @@
       register: module_out
       when: not dry_run
 
-    - include_tasks: frr_ipv4_route_scale_updated_reboot.yml
+    - include_tasks: frr_ipv4_route_scale_reboot.yml 
       with_sequence: count=5
 
     - command: "date +%Y%m%d%T"
