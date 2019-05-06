@@ -3,20 +3,32 @@
 # Run SDA Verification Test Case
 - include: playbooks/system_restartability/sda_partition_check.yml
 
+# Install frr package
+- include: playbooks/installation/frr_install.yml
+
 # Run Goes ping restarability with FRR configuration Test Case
 - include: playbooks/system_restartability/goes_ping_restartability_with_frr_configuration.yml
 
-# Run Goes ping restarability with Quagga configurationTest Case
-- include: playbooks/system_restartability/goes_ping_restartability_with_quagga_configuration.yml
-
-# Run Multiple Poercycle with FRR Configuration
+# Run Multiple Powercycle with FRR Configuration
 - include: playbooks/system_restartability/goes_status_after_multiple_powercycle_with_frr_configruation.yml
-
-# Run Multiple Powercycle with Quagga Configuration
-- include: playbooks/system_restartability/goes_status_after_multiple_powercycle_with_quagga_configruation.yml
 
 # Run Multiple reboot with FRR Configuration
 - include: playbooks/system_restartability/goes_status_after_multiple_reboot_with_frr_configruation.yml
 
+# Uninstall frr package
+- include: playbooks/installation/frr_uninstall.yml
+
+# Install frr package
+- include: playbooks/installation/quagga_install.yml
+
 # Run Multiple Reboot with Quagga Configuration
 - include: playbooks/system_restartability/goes_status_after_multiple_reboot_with_quagga_configruation.yml
+
+# Run Goes ping restarability with Quagga configurationTest Case
+- include: playbooks/system_restartability/goes_ping_restartability_with_quagga_configuration.yml
+
+# Run Multiple Powercycle with Quagga Configuration
+- include: playbooks/system_restartability/goes_status_after_multiple_powercycle_with_quagga_configruation.yml
+
+# Uninstall frr package
+- include: playbooks/installation/quagga_uninstall.yml
