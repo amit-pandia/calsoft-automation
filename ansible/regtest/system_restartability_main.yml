@@ -16,9 +16,9 @@
 - include: playbooks/system_restartability/goes_status_after_multiple_reboot_with_frr_configruation.yml
 
 # Uninstall frr package
-- include: playbooks/installation/frr_uninstall.yml
+- include: playbooks/installation/uninstall_packages.yml
 
-# Install frr package
+# Install quagga package
 - include: playbooks/installation/quagga_install.yml
 
 # Run Multiple Reboot with Quagga Configuration
@@ -30,5 +30,5 @@
 # Run Multiple Powercycle with Quagga Configuration
 - include: playbooks/system_restartability/goes_status_after_multiple_powercycle_with_quagga_configruation.yml
 
-# Uninstall frr package
-- include: playbooks/installation/quagga_uninstall.yml
+# Uninstall quagga package
+- include: playbooks/installation/uninstall_packages.yml
