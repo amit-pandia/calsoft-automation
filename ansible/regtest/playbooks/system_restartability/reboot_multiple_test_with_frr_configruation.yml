@@ -65,3 +65,6 @@
      hash_dict: "{{ module_out.hash_dict }}"
      log_content: "{{ logs['content'] | b64decode }}"
    delegate_to: 127.0.0.1
+
+ - name: waiting for switch to come back after reboot
+   local_action: wait_for host={{ ansible_ssh_host }} state=started port=22 delay=30 timeout=300 connect_timeout=15
