@@ -96,7 +96,18 @@
       when: not dry_run
 
     - include_tasks: frr_ipv4_route_scale_reboot.yml 
-      with_sequence: count=5
+      with_sequence: count=10
+
+    - name: Verify frr ipv4 16k routes scale
+      test_ipv4_routes_scale_updated:
+        switch_name: "{{ inventory_hostname }}"
+        spine_list: "{{ groups['spine'] }}"
+        leaf_list: "{{ groups['leaf'] }}"
+        package_name: 'frr'
+        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        log_dir_path: "{{ ipv4_log_dir }}"
+      register: module_out
+      when: not dry_run
 
     - command: "date +%Y%m%d%T"
       register: end_time

@@ -248,7 +248,7 @@ def verify_ping_on_pid_kill(module):
     execute_commands(module, 'kill -9 {}'.format(pid))
 
     # Wait for 10 seconds for the pid to come up
-    time.sleep(10)
+    time.sleep(25)
 
     # get pid of vnet
     execute_commands(module, 'pidof vnet-platina-mk1')

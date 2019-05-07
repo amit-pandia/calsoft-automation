@@ -204,6 +204,12 @@ def verify_ping(module):
             failure_summary += ' for {} packets'.format(packet_count)
             failure_summary += ' are not received in the output of '
             failure_summary += 'command {}\n'.format(cmd)
+	elif 'Cannot assign requested address' in ping_out:
+	    RESULT_STATUS1 = False
+            failure_summary += 'Ping from switch {} to {}'.format(switch_name, p_list[0])
+            failure_summary += ' for {} packets'.format(packet_count)
+            failure_summary += ' are not received in the output of '
+            failure_summary += 'command {}\n'.format(cmd)
 
     alist = [True if RESULT_STATUS1 else False]
     alist.append(failure_summary)
