@@ -276,7 +276,7 @@ def main():
             config_file=dict(required=False, type='str', default=''),
             spine_list=dict(required=False, type='list', default=[]),
             leaf_list=dict(required=False, type='list', default=[]),
-            is_ping=dict(required=False, type='bool'),
+            is_ping=dict(required=False, type='bool', deafult=False),
             package_name=dict(required=False, type='str'),
             hash_name=dict(required=False, type='str'),
             log_dir_path=dict(required=False, type='str'),
