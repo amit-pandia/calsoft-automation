@@ -35,6 +35,8 @@
 
 - include: playbooks/issues/issue_hping_not_working_on_links.yml
 
+- include: playbooks/issues/issue_7_redis_not_up_during_goes_restart.yml
+
 # Reset the setup
 - include: playbooks/master_reset_invaders.yml
 
