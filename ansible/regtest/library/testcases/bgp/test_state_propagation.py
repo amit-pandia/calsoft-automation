@@ -8,7 +8,7 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-#
+# 
 # Ansible is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -162,6 +162,7 @@ def verify_quagga_bgp_state_propagation(module):
 	cmd = "vtysh -c 'sh ip route'"
         out = execute_commands(module, cmd)
 	if route not in out:
+            RESULT_STATUS = False
             failure_summary += 'On Switch {} bgp route '.format(switch_name)
             failure_summary += '{} is not present after FRR restart'.format(route)
             failure_summary += 'in the output of command {}\n'.format(cmd)
@@ -176,11 +177,12 @@ def verify_quagga_bgp_state_propagation(module):
     time.sleep(10)
 
     # Verify bgp routes
-    time.sleep(120)
+    time.sleep(180)
     if switch_name != propagate_switch:
         cmd = "vtysh -c 'sh ip route'"
         out = execute_commands(module, cmd)
         if route in out:
+	    RESULT_STATUS = False
             failure_summary += 'On Switch {} bgp route '.format(switch_name)
             failure_summary += '{} is present '.format(route)
             failure_summary += 'in the output of command {} '.format(cmd)
@@ -203,6 +205,7 @@ def verify_quagga_bgp_state_propagation(module):
         cmd = "vtysh -c 'sh ip route'"
         out = execute_commands(module, cmd)
 	if route not in out:
+	    RESULT_STATUS = False
             failure_summary += 'On Switch {} bgp route '.format(switch_name)
             failure_summary += '{} is not present '.format(route)
             failure_summary += 'in the output of command {}\n'.format(cmd)
