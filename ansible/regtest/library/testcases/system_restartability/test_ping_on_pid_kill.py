@@ -253,9 +253,6 @@ def verify_ping_on_pid_kill(module):
     # get pid of vnet
     execute_commands(module, 'pidof vnet-platina-mk1')
 
-    # Get the GOES status info
-    execute_commands(module, 'goes status')
-    
     # Get all bgp routes
     retry = retries - 1
     found_list = [False, False]
@@ -273,6 +270,13 @@ def verify_ping_on_pid_kill(module):
         else:
             time.sleep(delay)
             retry -= 1
+
+    # Restart Goes and get the GOES status info
+    execute_commands(module, 'goes restart')
+    execute_commands(module, 'goes status')
+
+    # Check ping 
+    verify_ping(module)
 
     # Store the failure summary in hash
     RESULT_STATUS, HASH_DICT['result.detail'] = all([verify_bgp_loopback(module)[0], verify_ping(module)[0]]), \
