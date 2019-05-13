@@ -26,9 +26,9 @@
       shell: "./bmc_login_{{ inventory_hostname }}.sh"
       args:
         chdir: /tmp/
+      delay: 10
       with_sequence: start=0 end=100
       delegate_to: 127.0.0.1
-
 
     - name: Remove bmc_login script
       file:
