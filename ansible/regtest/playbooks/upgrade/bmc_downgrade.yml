@@ -44,7 +44,7 @@
       delegate_to: 127.0.0.1
 
     - name: reboot the switch
-      shell: sleep 2 && shutdown -r now
+      shell: sleep 2 && reboot
       async: 1
       poll: 0
       ignore_errors: true
