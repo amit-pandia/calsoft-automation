@@ -15,14 +15,14 @@
   become: true
   ignore_errors: yes
   tasks:
-    - name: Copy bmc_upgrade script
+    - name: Copy bmc_login script
       template:
         src: ../../templates/bmc_login.sh
         dest: "/tmp/bmc_login_{{ inventory_hostname }}.sh"
         mode: 0755
       delegate_to: 127.0.0.1
 
-    - name: Run bmc_upgrade script
+    - name: Run bmc_login script
       shell: "./bmc_login_{{ inventory_hostname }}.sh"
       args:
         chdir: /tmp/
@@ -30,7 +30,7 @@
       delegate_to: 127.0.0.1
 
 
-    - name: Remove bmc_upgrade script
+    - name: Remove bmc_login script
       file:
         path: "/tmp/bmc_login_{{ inventory_hostname }}.sh"
         state: absent
