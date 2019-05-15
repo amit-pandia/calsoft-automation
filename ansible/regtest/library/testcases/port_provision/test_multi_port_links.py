@@ -154,37 +154,51 @@ def verify_port_links(module):
 
     for speed in speed_list:
         if speed == '100g':
-            is_subports = False 
-	    if f_ports:
-	            eth_list = [str(ele) for ele in f_ports if ele % 2 != 0]
-		    amedia = 'fiber'
-	    else:
-		    amedia = media
-		    eth_list = ['1']
-	    fec = 'cl91'
+            is_subports = False
+		if f_ports:
+		media = "fiber"
+		for ele in f_ports:
+			if ele % 2 == 0:
+				continue
+			else:
+				cmd = "goes hget platina-mk1 qsfp.compliance"
+				out = execute_commands(module, cmd).splitlines()
+				for line in out:
+					if ("xeth{}".format(ele) in line and "100GBASE-LR4" in line):
+						fec = "none"
+						break
+					elif ("xeth{}".format(ele) in line and "100G CWDM4" in line):
+						fec = "none"
+						break
+					elif ("xeth{}".format(ele) in line and "100GBASE-SR4" in line):
+						fec = "cl91"
+						break
+					else:
+						continue
+		eth_list = ['1', '17']
         elif speed == '10g':
             is_subports = True
-            eth_list = ['3', '11']
+            eth_list = ['3', '11', '19', '27']
             subports = ['1', '3']
             fec = 'cl74'
         elif speed == '20g':
             is_subports = True
-            eth_list = ['3', '11']
+            eth_list = ['3', '11', '19', '27']
             subports = ['2', '4']
             fec = 'cl74'
         elif speed == '25g':
             is_subports = True
-            eth_list = ['5', '13']
+            eth_list = ['5', '13', '21', '29']
             subports = ['1', '2', '3', '4']
             fec = 'cl74'
         elif speed == '50g':
             is_subports = True
             is_lane2_count2 = True
-            eth_list = ['7', '15']
+            eth_list = ['7', '15', '23', '31']
             fec = 'cl74'
         elif speed == '1g':
             is_subports = True
-            eth_list = ['9']
+            eth_list = ['9', '25']
             fec = 'none'
             speed = '1000m'
 
