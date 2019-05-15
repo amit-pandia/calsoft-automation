@@ -33,17 +33,17 @@
         state: directory
       when: not dry_run
 
-#    - name: Copy port provisioned interfaces_flow_control_10g_single_interface_two_devices file to /etc/network/interfaces
-#      template:
-#        src: "../../files/{{ inventory_hostname }}/interfaces_flow_control_10g_single_interface_two_devices"
-#        dest: "{{ network_interfaces_file }}"
-#      when: not dry_run
+    - name: Copy port provisioned interfaces_flow_control_10g_single_interface_two_devices file to /etc/network/interfaces
+      template:
+        src: "../../files/{{ inventory_hostname }}/interfaces_flow_control_10g_single_interface_two_devices"
+        dest: "{{ network_interfaces_file }}"
+      when: not dry_run
 
-#    - name: Copy goesd-platina-mk1-modprobe.conf file
-#      template:
-#        src: "../../files/{{ inventory_hostname }}/goesd-platina-mk1-modprobe.conf_flow_control_10g_single_interface_two_devices"
-#        dest: "{{ goesd_modprobe_file }}"
-#      when: not dry_run
+    - name: Copy goesd-platina-mk1-modprobe.conf file
+      template:
+        src: "../../files/{{ inventory_hostname }}/goesd-platina-mk1-modprobe.conf_flow_control_10g_single_interface_two_devices"
+        dest: "{{ goesd_modprobe_file }}"
+      when: not dry_run
    
     - name: Update interfaces file for fiber ports
       test_fiber_ports:
@@ -62,20 +62,20 @@
       ignore_errors: yes
       when: not dry_run  
   
-#    - set_fact:
-#        commands: "{{ item }}"
-#      with_items:
-#      - 'rmmod platina-mk1'
-#      - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
-#      - 'ifdown -a --allow vnet'
-#      - 'ifup -a --allow vnet'
-#      - 'goes restart'
-#      when: dry_run
+    - set_fact:
+        commands: "{{ item }}"
+      with_items:
+      - 'rmmod platina-mk1'
+      - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
+      - 'ifdown -a --allow vnet'
+      - 'ifup -a --allow vnet'
+      - 'goes restart'
+      when: dry_run
 
-#    - name: Wait few seconds for GOES to come up
-#      pause:
-#        seconds: 10
-#      when: not dry_run
+    - name: Wait few seconds for GOES to come up
+      pause:
+        seconds: 10
+      when: not dry_run
 
     - name: Goes status
       command: goes status
@@ -94,7 +94,7 @@
         platina_redis_channel: "{{ platina_redis_channel }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
         log_dir_path: "{{ flow_control_log_dir }}"
-#      register: module_out
+      register: module_out
       when: not dry_run
 
     - name: Verify speed
