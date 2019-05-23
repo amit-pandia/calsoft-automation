@@ -356,8 +356,8 @@ def main():
 
 	# Exit the module and return the required JSON.
 	module.exit_json(
-               hash_dict=HASH_DICT,
-	       log_file_path=log_file_path
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
 	)
 
 
