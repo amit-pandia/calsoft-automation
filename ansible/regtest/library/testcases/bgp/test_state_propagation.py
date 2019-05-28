@@ -167,7 +167,7 @@ def verify_quagga_bgp_state_propagation(module):
             failure_summary += '{} is not present after FRR restart'.format(route)
             failure_summary += 'in the output of command {}\n'.format(cmd)
 
-
+    time.sleep(30)
     # Bring down few interfaces on propagate switch
     if switch_name == propagate_switch:
         for eth in eth_list:
