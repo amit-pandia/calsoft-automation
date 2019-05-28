@@ -15,6 +15,12 @@
 # Run Multiple reboot with FRR Configuration
 - include: playbooks/system_restartability/goes_status_after_multiple_reboot_with_frr_configruation.yml
 
+# Run IPv4 route scale with powercycle
+- include: playbooks/system_restartability/frr_ipv4_route_scale_powercycle_updated.yml
+
+# Run IPv4 route scale with multiple reboot
+- include: playbooks/system_restartability/frr_ipv4_route_scale_reboot_updated.yml
+
 # Uninstall frr package
 - include: playbooks/installation/uninstall_packages.yml
 
