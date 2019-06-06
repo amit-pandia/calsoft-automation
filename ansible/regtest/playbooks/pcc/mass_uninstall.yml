@@ -1,0 +1,28 @@
+---
+
+- hosts: server_emulator  #host details from which we are calling API, we are ruunnig on setup of invader28 i.e 172.17.2.28
+  become: true
+  tasks:
+    - name: Check that we can login to PCC
+      uri:
+        url: https://172.17.2.215:9999/security/auth #API for the PCC login.If you want to run this playbook some other PCC than you need to update the ip address of that PCC server in API
+        validate_certs: False
+        method: POST
+        body: {username: "admin", password: "admin"}
+        status_code: 200
+        body_format: json
+        return_content: yes
+
+    - name: Uninstall a MaaS on node
+      uri:
+        url: https://172.17.2.215:9999/pccserver/node/update #API for the PCC login.If you want to run this playbook some other PCC than you need to update the ip address of that PCC server in API
+        method: PUT
+        headers:
+          Authorization: "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTU2MDI0ODE3NCwiaWF0IjoxNTU5NjQzMzc0fQ.gfrLcI8cS-pRiHZfFfO-Ph-RHtD3veItr6k4CDNoRL51-miImnHIV6ThrbvB4g_yfIY7EIt3jdvTr_wRYkoGcA"
+        validate_certs: False
+        body: {"Id":14,"Name":"{{ pcc_node4 }}","Host":"{{ node4_host }}","SN":"FDU1757600015","Model":"PS-3001-32C-AFA","tags":[],"Site_Id":0,"ClusterId":0,"owner":1,"roles":[],"interfaces":[],"bmcUsers":[],"adminUser":"","sshKeys":[],"console":"","managed":false,"standby":false} #Need to get values 'Id' of node on which need to uninstall roles and 'role' of Node Roles which need to uninstall from PCC GUI
+        force_basic_auth: yes
+        status_code: 200
+        body_format: json
+
+

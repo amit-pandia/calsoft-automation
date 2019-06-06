@@ -112,3 +112,22 @@ downgrade_cmd: 'upgrade -v v1.2.0-rc0 -s 172.17.2.28/downloads -f'
 #upgrade_cmd: 'upgrade -v master -s downloads.platinasystems.com/TEST -f'
 upgrade_cmd: 'upgrade -v kph -s 172.17.2.28/downloads'
 
+#### PCC ####
+pcc_user: 'admin'
+pcc_password: 'admin'
+pcc_node1: 'invader29'
+pcc_node2: 'invader30'
+pcc_node3: 'invader31'
+pcc_node4: 'invader32'
+node1_host: '172.17.2.29'
+node2_host: '172.17.2.30'
+node3_host: '172.17.2.31'
+node4_host: '172.17.2.32'
+
+## Role ID
+goes: 1
+lldp: 2
+ospf: 3
+bgp: 4
+wordpress: 5
+mass: 6

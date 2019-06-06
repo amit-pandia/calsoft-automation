@@ -1,0 +1,47 @@
+---
+
+- hosts: server_emulator
+  become: true
+  tasks:
+    - name: Check that we can login to PCC
+      uri:
+        url: https://172.17.2.215:9999/security/auth  #API for the PCC login.If you want to run this playbook some other PCC than you need to update the ip address of that PCC server in API
+        validate_certs: False
+        method: POST
+        body: {username: '{{ pcc_user }}', password: '{{ pcc_password }}'}
+        status_code: 200
+        body_format: json
+        return_content: yes
+
+    - name: Create a MaaS role
+      uri:
+        url: https://172.17.2.215:9999/pccserver/roles #API for role creationo
+        method: POST
+        headers:
+          Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTU2MDQwNjc4MiwiaWF0IjoxNTU5ODAxOTgyfQ.z7aJAkzN_mz0KyYPcsynPCx9WkJ3qbYL58e6GS6r6hNNjsbH99Gl99U-5aFILDD1k5X3ayOJZ68tW0s8eZ_9Hw
+          Content-Type: application/json
+          Referer: https://172.17.2.215:7654/infrastructure/node-roles
+        validate_certs: False
+        body: {id: 0, name: "test1", description: "testing purpose",templateIDs: [9], owner: 1}  # Need to change templateID for different role like lldp, FRR,agenrt 
+        force_basic_auth: yes
+        status_code: 200
+        body_format: json
+        register: role
+
+
+    - name: Create a Node
+      uri:
+        url: https://172.17.2.215:9999/pccserver/node/add #API for Node creation If you want to run this playbook some other PCC than you need to update the ip address of that PCC server in API
+        method: POST
+        headers:
+          Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTU2MDQwNjc4MiwiaWF0IjoxNTU5ODAxOTgyfQ.z7aJAkzN_mz0KyYPcsynPCx9WkJ3qbYL58e6GS6r6hNNjsbH99Gl99U-5aFILDD1k5X3ayOJZ68tW0s8eZ_9Hw #Authentication Key
+          Content-Type: application/json
+          Referer: https://172.17.2.215:7654/infrastructure/nodes/create-node
+        validate_certs: False
+        body: {"Name":"{{ pcc_node4 }}","Host":"{{ node4_host }}","SN":"","Model":"","tags":[],"Site_Id":0,"ClusterId":0,"owner":0,"roles":[],"interfaces":[],"bmc":"","bmcUser":"","bmcUsers":[],"bmcPassword":"","adminUser":"","sshKeys":[],"console":"","managed":false,"standby":false}           #here you can define the parameter for you node like name , ip address
+        force_basic_auth: yes
+        body_format: json
+    - name: Wait few seconds for node to come up
+      pause:
+        seconds: 100
+
