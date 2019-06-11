@@ -94,6 +94,9 @@
          [Install]
          WantedBy=multi-user.target
 
+   - name: Remove Quagga installed file
+     shell: "rm -f /tmp/{{ quagga_installer_name }}"
+
    - file:
        path: "{{ gobgp_dir }}"
        state: directory
