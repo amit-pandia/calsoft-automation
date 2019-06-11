@@ -14,11 +14,11 @@
 
 
 # Run all quagga test cases
-- include: quagga_main.yml
+#- include: quagga_main.yml
 
 
 # Run all frr test cases
-- include: frr_main.yml
+#- include: frr_main.yml
 
 
 # Run all gobgp test cases
