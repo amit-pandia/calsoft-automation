@@ -15,6 +15,7 @@ goes_retry: 3
 
 regression_summary_report: /var/log/regression/regression_summary_file_{{ testbed_name }}
 
+blackhole_route_dir: /var/log/regression/black_hole
 bgp_log_dir: /var/log/regression/bgp
 ospf_log_dir: /var/log/regression/ospf
 isis_log_dir: /var/log/regression/isis
