@@ -125,44 +125,46 @@ def verify_blackhole_route_tables(module):
     elif switch_name in spine_list:
             p_list = leaf_list
 
-    if subnet_mask == "24":
-        blackhole_ip = '10.0.{}.0/24'.format(eth_list)
-        ip_check = '10.0.{0}.0'.format(eth_list)
-    elif subnet_mask == "32":
-        blackhole_ip = '10.0.{0}.{1}/32'.format(eth_list,p_list[0][-2:])
-        ip_check = '10.0.{0}.{1}'.format(eth_list,p_list[0][-2:])
+    for eth in eth_list:
+
+        if subnet_mask == "24":
+            blackhole_ip = '10.0.{}.0/24'.format(eth)
+            ip_check = '10.0.{0}.0'.format(eth)
+        elif subnet_mask == "32":
+            blackhole_ip = '10.0.{0}.{1}/32'.format(eth,p_list[0][-2:])
+            ip_check = '10.0.{0}.{1}'.format(eth,p_list[0][-2:])
 
     #verify kernel ip route table
-    out = execute_commands(module,'ip route')
-    if ip_check not in out:
-        result_status = False
-        failure_summary += 'blackhole {} not added in kernel route table'.format(blackhole_ip)
+        out = execute_commands(module,'ip route')
+        if ip_check not in out:
+            result_status = False
+            failure_summary += 'blackhole {} not added in kernel route table'.format(blackhole_ip)
 
     #verify goes table
-    out = execute_commands(module,'goes vnet show ip fib')
-    for line in out.splitlines():
-        if blackhole_ip in line:
-            if 'drop' not in line:
-                result_status = False
-                failure_summary += 'Drop not found in goES table for blackhole {}'.format(blackhole_ip)
+        out = execute_commands(module,'goes vnet show ip fib')
+        for line in out.splitlines():
+            if blackhole_ip in line:
+                if 'drop' not in line:
+                    result_status = False
+                    failure_summary += 'Drop not found in goES table for blackhole {}'.format(blackhole_ip)
+                    break
                 break
-            break
 
     #verify tcam table(check in all four pipelines)
-    out = execute_commands(module,'goes vnet show fe1 tcam')
-    count = 0
-    for line in out.splitlines():
-        if ip_check in line:
-            if 'Drop' not in line:
-                result_status = False
-                failure_summary+=' Adj:Drop not found in tcam table for blackhole {}'.format(blackhole_ip)
-            count+=1
+        out = execute_commands(module,'goes vnet show fe1 tcam')
+        count = 0
+        for line in out.splitlines():
+            if ip_check in line:
+                if 'Drop' not in line:
+                    result_status = False
+                    failure_summary+=' Adj:Drop not found in tcam table for blackhole {}'.format(blackhole_ip)
+                count+=1
 
-#    if count !=4:
-#        result_status = False
-#        failure_summary += ' Adj:Drop found in {} pipelines'.format(count)
+#       if count !=4:
+#           result_status = False
+#           failure_summary += ' Adj:Drop found in {} pipelines'.format(count)
 
-    return failure_summary
+        return failure_summary
 
 
 #verify ping status
@@ -181,8 +183,8 @@ def verify_ping(module):
             p_list = spine_list
     elif switch_name in spine_list:
             p_list = leaf_list
-
-    cmd = "ping -c {3} -I 10.0.{0}.{1} 10.0.{0}.{2}".format(eth_list, switch_name[-2:], p_list[0][-2:],packet_count)
+    for eth in eth_list:
+        cmd = "ping -c {3} -I 10.0.{0}.{1} 10.0.{0}.{2}".format(eth, switch_name[-2:], p_list[0][-2:],packet_count)
 
     ping_out = execute_commands(module, cmd)
 
