@@ -7,38 +7,80 @@
     register: start_time
 
   - set_fact:
-     hash_name: "32_blackhole_route_basic_{{ start_time.stdout }}"
+     hash_name: "24_blackhole_10g_portprov_route_basic_{{ start_time.stdout }}"
      start_time: "{{ start_time.stdout }}"
+
+- hosts: leaf:spine
+  become: true
+  tasks:
+    - name: Copy port provisioned interfaces_10g_cr_fec_none_autoneg_off_lanes_1_count_4 file to /etc/network/interfaces
+      template:
+          src: "../../files/{{ inventory_hostname }}/interfaces_10g_cr_fec_none_autoneg_off_lanes_1_count_4"
+          dest: "{{ network_interfaces_file }}"
+      when: not dry_run
+
+    - name: Copy goesd-platina-mk1-modprobe.conf file
+      template:
+          src: "../../files/goesd-platina-mk1-modprobe.conf_lane1_count4"
+          dest: "{{ goesd_modprobe_file }}"
+      when: not dry_run
+
+    - name: Update interfaces file for fiber ports
+      test_fiber_ports:
+        cmd : "4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1"
+      register: fmodule_out
+
+    - name: Wait few seconds for GOES to come up
+      pause:
+        seconds: 10
+      when: not dry_run
+
+    - name: Restart goes
+      command: "{{ item }}"
+      with_items:
+      - 'rmmod platina-mk1'
+      - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
+      - 'ifdown -a --allow vnet'
+      - 'ifup -a --allow vnet'
+      - 'goes restart'
+      when: not dry_run
+
+    - name: Wait for GoES to come up
+      pause:
+        seconds: 10
 
 - hosts: leaf[0]
   become: true
   tasks:
-    - name: Copy black hole interfaces interfaces_32_black_hole_route_basic to /etc/network/interfaces
+    - name: Copy black hole interfaces interfaces_black_hole_10g_cr_fec_none_autoneg_off_lanes_1_count_4 to /etc/network/interfaces
       template:
-         src: "../../files/{{ inventory_hostname }}/interfaces_32_black_hole_route_basic"
-         dest: "{{ network_interfaces_file }}"
+        src: "../../files/{{ inventory_hostname }}/interfaces_black_hole_24_10g_cr_fec_none_autoneg_off_lanes_1_count_4"
+        dest: "{{ network_interfaces_file }}"
 
     - name: Execute commands
       command: "{{ item }}"
       with_items:
           - 'rmmod platina-mk1'
-          - 'modprobe platina-mk1 provision=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1'
+          - 'modprobe platina-mk1 provision=4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1'
           - 'ifdown -a --allow vnet'
           - 'ifup -a --allow vnet'
           - 'goes restart'
+      ignore_errors: yes
 
-    - name: Wait for goes to start
+    - name: Wait for GoES to come up
       pause:
-         seconds: 15
+        seconds: 10
+
 
     - name: Verify black hole addition to tables
       verify_blackhole_route:
           switch_name: "{{ inventory_hostname }}"
           eth_list: "5"
-          subnet_mask: "32"
+          subnet_mask: "24"
           spine_list: "{{ groups['spine'][0] }}"
           leaf_list: "{{ groups['leaf'][0] }}"
           hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+          is_subports: True
           log_dir_path: "{{ blackhole_route_dir }}"
       register: module_out
       when: not dry_run
@@ -55,32 +97,30 @@
     - name: waiting for switch to come back after powercycle
       local_action: wait_for host={{ ansible_ssh_host }} state=started port=22 delay=30 timeout=300 connect_timeout=15
       when: not dry_run
-#   - name: waiting for switch to come back after powercycle
-#     pause:
-#       minutes: 1
 
     - name: Execute commands
       command: "{{ item }}"
       with_items:
           - 'rmmod platina-mk1'
-          - 'modprobe platina-mk1 provision=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1'
+          - 'modprobe platina-mk1 provision=4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1'
           - 'ifdown -a --allow vnet'
           - 'ifup -a --allow vnet'
           - 'goes restart'
       ignore_errors: yes
 
-    - name: Wait for goes to start
+    - name: Wait for GoES to come up
       pause:
-         seconds: 15
+        seconds: 10
 
     - name: Reverify black hole addition to tables
       verify_blackhole_route:
         switch_name: "{{ inventory_hostname }}"
         eth_list: "5"
-        subnet_mask: "32"
+        subnet_mask: "24"
         spine_list: "{{ groups['spine'][0] }}"
         leaf_list: "{{ groups['leaf'][0] }}"
         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+        is_subports: True
         log_dir_path: "{{ blackhole_route_dir }}"
       register: module_out
       when: not dry_run
@@ -88,6 +128,7 @@
     - command: "date +%Y%m%d%T"
       register: end_time
       when: not dry_run
+      ignore_errors: yes
 
     - name: Fetch the log file
       slurp:
@@ -141,6 +182,3 @@
   when:
     - reset_config
     - not dry_run
-
-
-

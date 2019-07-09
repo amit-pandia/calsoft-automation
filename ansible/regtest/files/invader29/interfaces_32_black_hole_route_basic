@@ -75,7 +75,7 @@ pre-up ethtool -s $IFACE speed 100000 autoneg off
 pre-up ethtool --set-priv-flags $IFACE copper on
 pre-up ethtool --set-priv-flags $IFACE fec74 off
 pre-up ethtool --set-priv-flags $IFACE fec91 on
-pre-up ip route add blackhole 10.0.5.0/24
+pre-up ip route add blackhole 10.0.5.31/32
 post-down ip link set $IFACE down
 allow-vnet xeth5
 
