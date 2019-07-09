@@ -1,5 +1,5 @@
 ---
-- hosts: leaf[0]
+- hosts: leaf:spine
   become: true
   ignore_errors: yes
   tasks:
@@ -8,7 +8,12 @@
           src: "../../files/{{inventory_hostname}}/network_interfaces_master"
           dest: "{{ network_interfaces_file }}"
 
-    - name: Execute commands
+    - name: Copy default goesd-platina-mk1-modprobe.conf file
+      copy:
+          src: "../../files/goesd-platina-mk1-modprobe.conf"
+          dest: "/etc/modprobe.d/goesd-platina-mk1-modprobe.conf"
+
+    - name: Goes restart
       command: "{{ item }}"
       with_items:
           - 'rmmod platina-mk1'

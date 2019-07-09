@@ -1,4 +1,3 @@
-
 import shlex
 from ansible.module_utils.basic import AnsibleModule
 from collections import OrderedDict
@@ -67,6 +66,9 @@ hash_dict:
 
 HASH_DICT = OrderedDict()
 result_status = True
+is_subports = False
+failure_summary = ''
+
 
 def run_cli(module, cli):
     """
@@ -109,109 +111,155 @@ def execute_commands(module, cmd):
 
     return out
 
+
+def verify_port_links(module):
+    switch_name = module.params['switch_name']
+    global failure_summary, result_status
+    eth_list = ['1', '3', '5', '7', '9', '11', '13', '15', '17', '19', '21', '23', '25', '27', '29', '31']
+    subports = ['1', '2', '3', '4']
+
+    for eth in eth_list:
+        for port in subports:
+            cmd = 'goes hget {} vnet.xeth{}-{}.link'.format('platina-mk1', eth, port)
+            out = run_cli(module, cmd)
+            if 'true' not in out:
+                result_status = False
+                failure_summary += 'On switch {} '.format(switch_name)
+                failure_summary += 'port link is not up '
+                failure_summary += 'for the interface xeth{}-{}\n'.format(eth, port)
+    return failure_summary
+
+
 def verify_blackhole_route_tables(module):
+    global result_status, is_subports, failure_summary
 
-    global result_status
-    failure_summary = ''
-
-    eth_list = module.params['eth_list']
+    eth_list = module.params['eth_list'].split(',')
     subnet_mask = module.params['subnet_mask']
     leaf_list = module.params['leaf_list'][:]
     spine_list = module.params['spine_list'][:]
     switch_name = module.params['switch_name']
+    is_subports = module.params['is_subports']
+    is_lane2_count2 = module.params['is_lane2_count2']
+
+    if is_lane2_count2:
+        subports = ['1', '2']
+    else:
+        subports = ['1']
+
+    blackhole_ip = []
 
     if switch_name in leaf_list:
-            p_list = spine_list
+        p_list = spine_list
     elif switch_name in spine_list:
-            p_list = leaf_list
+        p_list = leaf_list
 
-    for eth in eth_list:
+    if not is_subports:
+        for eth in eth_list:
 
-        if subnet_mask == "24":
-            blackhole_ip = '10.0.{}.0/24'.format(eth)
-            ip_check = '10.0.{0}.0'.format(eth)
-        elif subnet_mask == "32":
-            blackhole_ip = '10.0.{0}.{1}/32'.format(eth,p_list[0][-2:])
-            ip_check = '10.0.{0}.{1}'.format(eth,p_list[0][-2:])
+            if subnet_mask == "24":
+                blackhole_ip.append('10.0.{}.0/24'.format(eth))
+            elif subnet_mask == "32":
+                blackhole_ip.append('10.0.{0}.{1}/32'.format(eth, p_list[0][-2:]))
 
-    #verify kernel ip route table
-        out = execute_commands(module,'ip route')
-        if ip_check not in out:
+    else:
+        if subnet_mask == '24':
+            for eth in eth_list:
+                for sub in subports:
+                    blackhole_ip.append('10.{0}.{1}.0/24'.format(eth, sub))
+        elif subnet_mask == '32':
+            for eth in eth_list:
+                for sub in subports:
+                    blackhole_ip.append('10.{0}.{1}.{2}/32'.format(eth, sub, p_list[0][-2:]))
+
+    out1 = execute_commands(module, 'ip route')
+    out2 = execute_commands(module, 'goes vnet show ip fib')
+    out3 = execute_commands(module, 'goes vnet show fe1 tcam')
+
+    # verify kernel ip route table
+
+    for ip_check in blackhole_ip:
+        ip_route = 'blackhole ' + ip_check[:-3]
+        if ip_route not in out1:
             result_status = False
-            failure_summary += 'blackhole {} not added in kernel route table'.format(blackhole_ip)
+            failure_summary += 'blackhole {} not added in kernel route table'.format(ip_check)
 
-    #verify goes table
-        out = execute_commands(module,'goes vnet show ip fib')
-        for line in out.splitlines():
-            if blackhole_ip in line:
+
+# verify goes table
+    for line in out2.splitlines():
+        for ip_check in blackhole_ip:
+            if ip_check in line and 'Installed' in line:
                 if 'drop' not in line:
                     result_status = False
-                    failure_summary += 'Drop not found in goES table for blackhole {}'.format(blackhole_ip)
-                    break
-                break
+                    failure_summary += 'Drop not found in goES table for blackhole {}'.format(ip_check)
 
-    #verify tcam table(check in all four pipelines)
-        out = execute_commands(module,'goes vnet show fe1 tcam')
-        count = 0
-        for line in out.splitlines():
-            if ip_check in line:
+# verify tcam table(check in all four pipelines)
+    count = 0
+    for line in out3.splitlines():
+        for ip_check in blackhole_ip:
+            if ip_check[:-3] in line:
                 if 'Drop' not in line:
                     result_status = False
-                    failure_summary+=' Adj:Drop not found in tcam table for blackhole {}'.format(blackhole_ip)
-                count+=1
+                    failure_summary += ' Adj:Drop not found in tcam table for blackhole {}'.format(ip_check)
+                count += 1
 
-#       if count !=4:
-#           result_status = False
-#           failure_summary += ' Adj:Drop found in {} pipelines'.format(count)
+    if count != 4:
+        result_status = False
+        failure_summary += ' Adj:Drop found in {} pipelines'.format(count)
 
-        return failure_summary
+    return failure_summary
 
 
-#verify ping status
+# verify ping status
 def verify_ping(module):
-
     switch_name = module.params['switch_name']
     eth_list = module.params['eth_list']
     leaf_list = module.params['leaf_list'][:]
     spine_list = module.params['spine_list'][:]
 
-    global result_status, HASH_DICT
+    global result_status, HASH_DICT, is_subports, failure_summary
     packet_count = 5
-    failure_summary = ''
 
     if switch_name in leaf_list:
-            p_list = spine_list
+        p_list = spine_list
     elif switch_name in spine_list:
-            p_list = leaf_list
-    for eth in eth_list:
-        cmd = "ping -c {3} -I 10.0.{0}.{1} 10.0.{0}.{2}".format(eth, switch_name[-2:], p_list[0][-2:],packet_count)
+        p_list = leaf_list
 
-    ping_out = execute_commands(module, cmd)
+    if not is_subports:
+        for eth in eth_list:
+            cmd = "ping -c {3} -I 10.0.{0}.{1} 10.0.{0}.{2}".format(eth, switch_name[-2:], p_list[0][-2:], packet_count)
+            ping_out = execute_commands(module, cmd)
+    else:
+        for eth in eth_list:
+            cmd = "ping -c {3} -I 10.{0}.{1}.{2} 10.{0}.{1}.{4}".format(eth, "1", switch_name[-2:], packet_count,
+                                                                        p_list[0][-2:])
+            ping_out = execute_commands(module, cmd)
 
     if '100% packet loss' not in ping_out:
-            result_status = False
-            failure_summary += 'Ping from switch {} to {}'.format(switch_name, p_list[0])
-            failure_summary += ' are received in the output of '
-            failure_summary += 'command {}\n'.format(cmd)
+        result_status = False
+        failure_summary += 'Ping from switch {} to {}'.format(switch_name, p_list[0])
+        failure_summary += ' are received in the output of '
+        failure_summary += 'command {}\n'.format(cmd)
 
     return failure_summary
 
-def main():
 
+def main():
     module = AnsibleModule(
         argument_spec=dict(
-                    switch_name=dict(required=False, type='str'),
-                    spine_list=dict(required=False, type='list', default=[]),
-                    leaf_list=dict(required=False, type='list', default=[]),
-                    subnet_mask=dict(required=False, type='str'),
-                    eth_list = dict(required=False, type='str', default=''),
-                    hash_name=dict(required=False,type='str'),
-                    log_dir_path=dict(required=False,type='str'),
-                    dry_run_mode=dict(required=False, type='bool', default=False)
+            switch_name=dict(required=False, type='str'),
+            spine_list=dict(required=False, type='list', default=[]),
+            leaf_list=dict(required=False, type='list', default=[]),
+            subnet_mask=dict(required=False, type='str'),
+            eth_list=dict(required=False, type='str', default=''),
+            hash_name=dict(required=False, type='str'),
+            is_subports=dict(required=False, type='bool', default=False),
+            is_lane2_count2=dict(required=False, type='bool', default=False),
+            log_dir_path=dict(required=False, type='str'),
+            dry_run_mode=dict(required=False, type='bool', default=False)
         )
     )
 
-    global result_status,HASH_DICT
+    global result_status, HASH_DICT, failure_summary
     if module.params['dry_run_mode']:
         cmds_list = []
 
@@ -221,7 +269,9 @@ def main():
         execute_commands(module, 'goes vnet show ip fib')
         execute_commands(module, 'goes vnet show fe1 tcam')
         execute_commands(module, "ping -c {3} -I 10.0.{0}.{1} 10.0.{0}.{2}".format(module.params['interface_name'][-1],
-                                              module.params['switch_name'][-2:], module.params['leaf_list'][0][-2:],5))
+                                                                                   module.params['switch_name'][-2:],
+                                                                                   module.params['leaf_list'][0][-2:],
+                                                                                   5))
         execute_commands(module, 'redis-cli -h "{{ bmc_redis_ip }}" hset platina psu.powercycle true')
         execute_commands(module, 'goes status')
 
@@ -233,12 +283,13 @@ def main():
             cmds=cmds_list
         )
     else:
-
-        res1 = verify_blackhole_route_tables(module)
-        res2 = verify_ping(module)
-        HASH_DICT['result.detail'] = res1 + res2
+        if module.params['is_subports']:
+            verify_port_links(module)
+        verify_blackhole_route_tables(module)
+        verify_ping(module)
+        HASH_DICT['result.detail'] = failure_summary
         HASH_DICT['result.status'] = 'Passed' if result_status else 'Failed'
-       
+
         # Create a log file
         log_file_path = module.params['log_dir_path']
         log_file_path += '/{}.log'.format(module.params['hash_name'])
@@ -252,12 +303,13 @@ def main():
 
         log_file.close()
 
-    # Exit the module and return the required JSON.
+        # Exit the module and return the required JSON.
         module.exit_json(
-        hash_dict=HASH_DICT,
-        log_file_path=log_file_path
-    )
+            hash_dict=HASH_DICT,
+            log_file_path=log_file_path
+        )
+
 
 if __name__ == '__main__':
-        main()
+    main()
 
