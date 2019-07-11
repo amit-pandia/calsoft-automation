@@ -7,7 +7,7 @@
     register: start_time
 
   - set_fact:
-     hash_name: "24_blackhole_10g_portprov_route_basic_{{ start_time.stdout }}"
+     hash_name: "24_static_portprov_blackhole_route_basic_{{ start_time.stdout }}"
      start_time: "{{ start_time.stdout }}"
 
 - hosts: leaf:spine
@@ -52,25 +52,28 @@
 - hosts: leaf[1]
   become: true
   tasks:
-    - name: Copy black hole interfaces interfaces_black_hole_10g_cr_fec_none_autoneg_off_lanes_1_count_4 to /etc/network/interfaces
-      template:
-        src: "../../files/{{ inventory_hostname }}/interfaces_black_hole_24_10g_cr_fec_none_autoneg_off_lanes_1_count_4"
-        dest: "{{ network_interfaces_file }}"
+    - name: delete ip route
+      add_del_blackhole_route:
+         switch_name: "{{ inventory_hostname }}"
+         eth_list: "5"
+         subnet_mask: "24"
+         spine_list: "{{ groups['spine'] }}"
+         leaf_list: "{{ groups['leaf'] }}"
+         hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+         delete: True
+         is_subports: True
+         log_dir_path: "{{ blackhole_route_dir }}"
 
-    - name: Execute commands
-      command: "{{ item }}"
-      with_items:
-          - 'rmmod platina-mk1'
-          - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
-          - 'ifdown -a --allow vnet'
-          - 'ifup -a --allow vnet'
-          - 'goes restart'
-      ignore_errors: yes
-
-    - name: Wait for GoES to come up
-      pause:
-        seconds: 10
-
+    - name: Add a blackhole
+      add_del_blackhole_route:
+          switch_name: "{{ inventory_hostname }}"
+          eth_list: "5"
+          subnet_mask: "24"
+          spine_list: "{{ groups['spine'] }}"
+          leaf_list: "{{ groups['leaf']}}"
+          hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
+          is_subports: True
+          log_dir_path: "{{ blackhole_route_dir }}"
 
     - name: Verify black hole addition to tables
       verify_blackhole_route:
@@ -80,8 +83,8 @@
           spine_list: "{{ groups['spine'] }}"
           leaf_list: "{{ groups['leaf'] }}"
           hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-          is_subports: True
           log_dir_path: "{{ blackhole_route_dir }}"
+          is_subports: True
       register: module_out
       when: not dry_run
 
@@ -90,31 +93,9 @@
           state: directory
       when: not dry_run
 
-    - name: Power Cycle redis DB
-      command: "redis-cli -h {{ bmc_redis_ip }} hset platina-mk1-bmc psu.powercycle true"
-      when: not dry_run
-
-    - name: waiting for switch to come back after powercycle
-      local_action: wait_for host={{ ansible_ssh_host }} state=started port=22 delay=30 timeout=300 connect_timeout=15
-      when: not dry_run
-
-    - name: Reverify black hole addition to tables
-      verify_blackhole_route:
-        switch_name: "{{ inventory_hostname }}"
-        eth_list: "5"
-        subnet_mask: "24"
-        spine_list: "{{ groups['spine'] }}"
-        leaf_list: "{{ groups['leaf'] }}"
-        hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
-        is_subports: True
-        log_dir_path: "{{ blackhole_route_dir }}"
-      register: module_out
-      when: not dry_run
-
     - command: "date +%Y%m%d%T"
       register: end_time
       when: not dry_run
-      ignore_errors: yes
 
     - name: Fetch the log file
       slurp:
@@ -169,4 +150,7 @@
   tasks:
     - include: ../../playbooks/get_goes_status.yml start_time={{ hostvars['server_emulator']['start_time'] }} hash_name={{ hostvars['server_emulator']['hash_name'] }}
       when: not dry_run
+
+
+
 
