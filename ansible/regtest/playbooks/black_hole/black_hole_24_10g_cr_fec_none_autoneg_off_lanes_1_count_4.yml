@@ -61,7 +61,7 @@
       command: "{{ item }}"
       with_items:
           - 'rmmod platina-mk1'
-          - 'modprobe platina-mk1 provision=4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1'
+          - "modprobe platina-mk1 provision={{ fmodule_out.hash_dict['command'] }}"
           - 'ifdown -a --allow vnet'
           - 'ifup -a --allow vnet'
           - 'goes restart'
@@ -98,20 +98,6 @@
       local_action: wait_for host={{ ansible_ssh_host }} state=started port=22 delay=30 timeout=300 connect_timeout=15
       when: not dry_run
 
-    - name: Execute commands
-      command: "{{ item }}"
-      with_items:
-          - 'rmmod platina-mk1'
-          - 'modprobe platina-mk1 provision=4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1'
-          - 'ifdown -a --allow vnet'
-          - 'ifup -a --allow vnet'
-          - 'goes restart'
-      ignore_errors: yes
-
-    - name: Wait for GoES to come up
-      pause:
-        seconds: 10
-
     - name: Reverify black hole addition to tables
       verify_blackhole_route:
         switch_name: "{{ inventory_hostname }}"
@@ -147,6 +133,11 @@
       ignore_errors: yes
       when: not dry_run
 
+- include: black_hole_reset.yml
+  when:
+    - reset_config
+    - not dry_run
+
 - hosts: server_emulator
   become: true
   tasks:
@@ -177,8 +168,3 @@
   tasks:
     - include: ../../playbooks/get_goes_status.yml start_time={{ hostvars['server_emulator']['start_time'] }} hash_name={{ hostvars['server_emulator']['hash_name'] }}
       when: not dry_run
-
-- include: black_hole_reset.yml
-  when:
-    - reset_config
-    - not dry_run
