@@ -65,7 +65,7 @@
 - include: ntp_main.yml
 
 # Run all black hole test cases
--include: black_hole_main.yml
+- include: black_hole_main.yml
 
 # Run all System Restartability Playbook
 - include: system_restartability_main.yml
