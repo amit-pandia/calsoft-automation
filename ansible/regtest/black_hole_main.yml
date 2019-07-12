@@ -3,7 +3,7 @@
 # Reset the setup
 - include: playbooks/master_reset_invaders.yml
 
-Run the black hole test cases
+# Run the black hole test cases
 - include: playbooks/black_hole/24_black_hole_routing_basic.yml
 
 - include: playbooks/black_hole/24_static_black_hole_routing_basic.yml
