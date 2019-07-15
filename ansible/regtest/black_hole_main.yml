@@ -23,4 +23,3 @@
 # Reset the blach hole
 
 - include: playbooks/black_hole/black_hole_reset.yml
-
