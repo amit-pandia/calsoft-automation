@@ -7,7 +7,7 @@
     register: start_time
 
   - set_fact:
-     hash_name: "24_blackhole_route_basic_{{ start_time.stdout }}"
+     hash_name: "24_static_blackhole_route_basic_{{ start_time.stdout }}"
      start_time: "{{ start_time.stdout }}"
 
 - hosts: leaf[1]
@@ -106,6 +106,7 @@
   become: true
   gather_facts: no
   tasks:
-    - include: ../../playbooks/get_goes_status.yml
+    - include: ../../playbooks/get_goes_status.yml start_time={{ hostvars['server_emulator']['start_time'] }} hash_name={{ hostvars['server_emulator']['hash_name'] }}
       when: not dry_run
+      ignore_errors: yes
 
