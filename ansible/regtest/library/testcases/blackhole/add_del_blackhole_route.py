@@ -143,6 +143,9 @@ def add_del_blackhole(module):
                 blackhole_ip.append('10.0.{}.0/24'.format(eth))
             elif subnet_mask == "32":
                 blackhole_ip.append('10.0.{0}.{1}/32'.format(eth, p_list[0][-2:]))
+            else:
+                blackhole_ip.append('10.{}.0.0/16'.format(eth))
+
 
     else:
         if subnet_mask == '24':
@@ -153,6 +156,9 @@ def add_del_blackhole(module):
             for eth in eth_list:
                 for sub in subports:
                     blackhole_ip.append('10.{0}.{1}.{2}/32'.format(eth, sub, p_list[0][-2:]))
+        else:
+            for eth in eth_list:
+            	blackhole_ip.append('10.{}.0.0/16'.format(eth))
 
     if module.params['delete']:
        execute_commands(module, 'ip route delete {}'.format(blackhole_ip[0]))

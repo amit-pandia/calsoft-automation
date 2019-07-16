@@ -7,7 +7,7 @@
     register: start_time
 
   - set_fact:
-     hash_name: "24_static_blackhole_route_basic_{{ start_time.stdout }}"
+     hash_name: "16_static_blackhole_route_basic_{{ start_time.stdout }}"
      start_time: "{{ start_time.stdout }}"
 
 - hosts: leaf[0]
@@ -17,7 +17,7 @@
       add_del_blackhole_route:
          switch_name: "{{ inventory_hostname }}"
          eth_list: "5"
-         subnet_mask: "24"
+         subnet_mask: "16"
          spine_list: "{{ groups['spine'] }}"
          leaf_list: "{{ groups['leaf'] }}"
          hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
@@ -28,7 +28,7 @@
       add_del_blackhole_route:
           switch_name: "{{ inventory_hostname }}"
           eth_list: "5"
-          subnet_mask: "24"
+          subnet_mask: "16"
           spine_list: "{{ groups['spine'] }}"
           leaf_list: "{{ groups['leaf'] }}"
           hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
@@ -39,7 +39,7 @@
       verify_blackhole_route:
           switch_name: "{{ inventory_hostname }}"
           eth_list: "5"
-          subnet_mask: "24"
+          subnet_mask: "16"
           spine_list: "{{ groups['spine'] }}"
           leaf_list: "{{ groups['leaf'] }}"
           hash_name: "{{ hostvars['server_emulator']['hash_name'] }}"
@@ -108,5 +108,4 @@
   tasks:
     - include: ../../playbooks/get_goes_status.yml start_time={{ hostvars['server_emulator']['start_time'] }} hash_name={{ hostvars['server_emulator']['hash_name'] }}
       when: not dry_run
-      ignore_errors: yes
 

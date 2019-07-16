@@ -49,7 +49,7 @@
       pause:
         seconds: 10
 
-- hosts: leaf[1]
+- hosts: leaf[0]
   become: true
   tasks:
     - name: Copy black hole interfaces interfaces_black_hole_10g_cr_fec_none_autoneg_off_lanes_1_count_4 to /etc/network/interfaces

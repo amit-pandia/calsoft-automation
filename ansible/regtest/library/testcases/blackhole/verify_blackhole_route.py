@@ -140,6 +140,8 @@ def verify_blackhole_route_tables(module):
     switch_name = module.params['switch_name']
     is_subports = module.params['is_subports']
     is_lane2_count2 = module.params['is_lane2_count2']
+    testbed2_dict = {'invader42': 'invader32', 'invader43': "invader31", 'invader44': "invader30",
+                     'invader45': 'invader29'}
 
     if is_lane2_count2:
         subports = ['1', '2']
@@ -153,6 +155,9 @@ def verify_blackhole_route_tables(module):
     elif switch_name in spine_list:
         p_list = leaf_list
 
+    if  p_list in list(testbed2_dict.keys()):
+        p_list = testbed2_dict[p_list]
+
     if not is_subports:
         for eth in eth_list:
 
@@ -160,6 +165,8 @@ def verify_blackhole_route_tables(module):
                 blackhole_ip.append('10.0.{}.0/24'.format(eth))
             elif subnet_mask == "32":
                 blackhole_ip.append('10.0.{0}.{1}/32'.format(eth, p_list[0][-2:]))
+            else:
+                blackhole_ip.append('10.{}.0.0/16'.format(eth))
 
     else:
         if subnet_mask == '24':
@@ -170,6 +177,11 @@ def verify_blackhole_route_tables(module):
             for eth in eth_list:
                 for sub in subports:
                     blackhole_ip.append('10.{0}.{1}.{2}/32'.format(eth, sub, p_list[0][-2:]))
+        else:
+            for eth in eth_list:
+                for sub in subports:
+                    blackhole_ip.append('10.{0}.0.0/16'.format(eth))
+
 
     out1 = execute_commands(module, 'ip route')
     out2 = execute_commands(module, 'goes vnet show ip fib')
@@ -215,6 +227,7 @@ def verify_ping(module):
     eth_list = module.params['eth_list']
     leaf_list = module.params['leaf_list'][:]
     spine_list = module.params['spine_list'][:]
+    subports = ['1','2','3','4']
 
     global result_status, HASH_DICT, is_subports, failure_summary
     packet_count = 5
@@ -224,21 +237,33 @@ def verify_ping(module):
     elif switch_name in spine_list:
         p_list = leaf_list
 
+    testbed2_dict = {'invader42': 'invader32', 'invader43': "invader31", 'invader44': "invader30",
+                     'invader45': 'invader29'}
+
+    if switch_name and p_list in list(testbed2_dict.keys()):
+        switch_name = testbed2_dict[switch_name]
+        p_list = testbed2_dict[p_list]
+
+    ping_out = []
     if not is_subports:
         for eth in eth_list:
             cmd = "ping -c {3} -I 10.0.{0}.{1} 10.0.{0}.{2}".format(eth, switch_name[-2:], p_list[0][-2:], packet_count)
-            ping_out = execute_commands(module, cmd)
+            ping_out.append(execute_commands(module, cmd))
     else:
         for eth in eth_list:
-            cmd = "ping -c {3} -I 10.{0}.{1}.{2} 10.{0}.{1}.{4}".format(eth, "1", switch_name[-2:], packet_count,
+            for sub in subports:
+                cmd = "ping -c {3} -I 10.{0}.{1}.{2} 10.{0}.{1}.{4}".format(eth, sub, switch_name[-2:], packet_count,
                                                                         p_list[0][-2:])
-            ping_out = execute_commands(module, cmd)
+                ping_out.append(execute_commands(module, cmd))
+                if module.params['subnet_mask'] != '16':
+                     break
 
-    if '100% packet loss' not in ping_out:
-        result_status = False
-        failure_summary += 'Ping from switch {} to {}'.format(switch_name, p_list[0])
-        failure_summary += ' are received in the output of '
-        failure_summary += 'command {}\n'.format(cmd)
+    for ping in ping_out:
+        if '100% packet loss' not in ping:
+            result_status = False
+            failure_summary += 'Ping from switch {} to {}'.format(switch_name, p_list[0])
+            failure_summary += ' are received in the output of '
+            failure_summary += 'command {}\n'.format(cmd)
 
     return failure_summary
 
