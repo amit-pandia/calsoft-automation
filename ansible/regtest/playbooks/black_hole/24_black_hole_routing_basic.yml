@@ -10,7 +10,7 @@
      hash_name: "24_blackhole_route_basic_{{ start_time.stdout }}"
      start_time: "{{ start_time.stdout }}"
 
-- hosts: leaf[1]
+- hosts: leaf[0]
   become: true
   tasks:
     - name: Copy black hole interfaces interfaces_24_black_hole_route_basic to /etc/network/interfaces
