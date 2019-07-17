@@ -1,4 +1,16 @@
 ---
+- hosts: leaf[0]
+  become: true
+  ignore_errors: yes
+  tasks:
+    - name: Delete ip routes
+      command: "{{ item }}"
+      with_items:
+        - 'ip route delete 10.0.5.0/24'
+        - 'ip route delete 10.0.5.31/32'
+        - 'ip route delete 10.5.1.31/32'
+        - 'ip route delete 10.5.1.0/24'
+
 - hosts: leaf:spine
   become: true
   ignore_errors: yes
