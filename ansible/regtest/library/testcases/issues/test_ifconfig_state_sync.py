@@ -211,7 +211,7 @@ def check_interface_status_up(module):
 
     cmd = 'ifconfig xeth{}'.format(eth)
     status = execute_commands(module, cmd)
-    if 'UP BROADCAST RUNNING' not in status:
+    if 'UP,BROADCAST,RUNNING' not in status:
         RESULT_STATUS = False
         failure_summary += 'On switch {} '.format(switch_name)
         failure_summary += 'xeth{} status is false '.format(eth)
@@ -255,7 +255,7 @@ def check_interface_status_down(module):
 
     cmd = 'ifconfig xeth{}'.format(eth)
     status = execute_commands(module, cmd)
-    if 'UP BROADCAST RUNNING' in status:
+    if 'UP,BROADCAST,RUNNING' in status:
         RESULT_STATUS = False
         failure_summary += 'On switch {} '.format(switch_name)
         failure_summary += 'xeth{} status is true even after bringing down the interface '.format(eth)
